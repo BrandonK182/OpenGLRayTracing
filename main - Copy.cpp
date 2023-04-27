@@ -37,7 +37,7 @@ struct EyePos {
 	float z;
 	EyePos() {
 		x = 0.0f;
-		y = 3.0f;
+		y = 0.0f;
 		z = 3.0f;
 	}
 };
@@ -104,34 +104,48 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	//ray in point s in direction u
 	bool intersect = false;
 	float lowestT = 100;
-	int lowestPos;
+	int lowestPos = 0;
+	glm::vec3 ray; 
+	//std::cout << "begin raytracing     S: " << s[0] <<" , " <<  s[1]  << ", " << s[2] << " u: " << u[0] <<", " <<  u[1] << ", " << u[2] << std::endl;
 	for (int i = 0; i < normals.size(); i++)
 	{
+		//std::cout << "comparing to polygon " << i << std::endl;
 		float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(s, normals[i]) / (glm::dot(u, normals[i])));
-		glm::vec3 ray = s + (t * u);
+		ray = s + (t * u);
 
+		//std::cout << "creating the vectors for each of the object" << std::endl;
 		glm::vec3 v1(objectVert[i * 12], objectVert[i * 12 + 1], objectVert[i * 12 + 2]);
 		glm::vec3 v2(objectVert[i * 12 + 4], objectVert[i * 12 + 5], objectVert[i * 12 + 6]);
 		glm::vec3 v3(objectVert[i * 12 + 8], objectVert[i * 12 + 9], objectVert[i * 12 + 10]);
 
+		//std::cout << "checking if the point is in the triangle" << std::endl;
 		if (PointInTriangle(ray, v1, v2, v3))
 		{
-			intersect = true;
+			//std::cout << " CONNECTION!!!!!!!       point connects to triangle" << std::endl;
+			//marks the ray as touching the triangle at some point
+			//checks if the contact is the closest contact point
 			if (t < lowestT)
 			{
+				//std::cout << "lower than max" << std::endl;
+				intersect = true;
 				lowestT = t;
 				lowestPos = i;
 			}		
 		}
 	}	
 
+	//std::cout << "beginning check if item intersects" << std::endl;
 	//send white value if empty
 	if (!intersect)
 		return glm::vec3(1.0f, 1.0f, 1.0f);
 
+
+	//ray = s + (lowestT * u);
+	//std::cout << "lowest ray intersection " << ray[0] << "," << ray[1] << "," << ray[2] << std::endl;
+	return glm::vec3(1.0f, 0.0f, 0.0f);
 	//return the color of of of the verticies on the triangle with the lowest distance
 	//change later
-	return glm::vec3(objectColor[lowestPos*12], objectColor[lowestPos * 12], objectColor[lowestPos * 12]);
+	//return glm::vec3(objectColor[lowestPos*12], objectColor[lowestPos * 12], objectColor[lowestPos * 12]);
 }
 
 void RayTraceMain()
@@ -140,8 +154,11 @@ void RayTraceMain()
 	{
 		for (int j = 0; j < WindowHeight; j++)
 		{
+			//std::cout<<"drawing pixel " << i << ", " << j << std::endl;
 			glm::vec3 u = glm::normalize(viewPlaneVect[i][j]);
-			glm::vec3 color = RayTrace(eyePosition, u, 1);
+			//std::cout << "normalized direction u" << std::endl;
+			glm::vec3 color = RayTrace(eyePosition, u, 0);
+			//std::cout << "finish ray trace" << std::endl;
 			
 			glBegin(GL_POINTS);
 				glColor3f(color[0],color[1],color[2]);
@@ -149,6 +166,7 @@ void RayTraceMain()
 			glEnd();
 		}
 	}
+	std::cout << "draw cycle complete" << std::endl;
 
 }
 
@@ -166,7 +184,7 @@ void CreateViewPlane()
 			float y = (j * pixelSize) - (max / 2);
 			viewPlaneCoor[i][j][0] = x + (pixelSize / 2);
 			viewPlaneCoor[i][j][1] = y + (pixelSize / 2);
-			viewPlaneCoor[i][j][2] = 5.0f;
+			viewPlaneCoor[i][j][2] = 1.5f;
 		}
 	}
 	
@@ -182,13 +200,14 @@ void CreateViewPlane()
 
 void BuildTestPyramid()
 {
+	/*
 	//left face
 	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
+	objectVert.push_back(2.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
 
-	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
@@ -222,13 +241,15 @@ void BuildTestPyramid()
 
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
 	objectVert.push_back(1.0f);
 
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
+	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
-	objectVert.push_back(1.0f);
+		*/
+
 
 	//slanted face
 	objectVert.push_back(0.0f);
@@ -236,25 +257,32 @@ void BuildTestPyramid()
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
 
-	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
+	objectVert.push_back(-1.0f);
 	objectVert.push_back(1.0f);
 
+	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
-	objectVert.push_back(1.0f);
+	
+	for (int i = 0; i < 3; i++)
+	{
+		objectColor.push_back(1.0f);
+		objectColor.push_back(0.0f);
+		objectColor.push_back(0.0f);
+		objectColor.push_back(1.0f);
+	}
 }
 
 void createNormals()
 {
-	for (int i = 0; i < objectVert.size() / 3; i++)
+	for (int i = 0; i < (objectVert.size() / 12); i++)
 	{
 		glm::vec3 v1(objectVert[i*12], objectVert[i * 12+1], objectVert[i * 12+2]);
 		glm::vec3 v2(objectVert[i * 12 + 4], objectVert[i * 12 + 5], objectVert[i * 12 + 6]);
 		glm::vec3 v3(objectVert[i * 12 + 8], objectVert[i * 12 + 9], objectVert[i * 12 + 10]);
-
 
 		glm::vec3 AC = v3 - v1;
 		glm::vec3 CB = v3 - v2;
@@ -481,10 +509,13 @@ void active_motion_func( int x, int y )
 void display_func( void )
 {
 	// Clear the contents of the back buffer
+	
+	
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D( 0.0, 500.0, 500.0, 0.0);
+	gluOrtho2D( 0.0, 800.0, 800.0, 0.0);
+	
 	
 	RayTraceMain();
 	
@@ -504,10 +535,11 @@ void display_func( void )
 			glEnd();
 		}
 	}
+	*/
 
 	// Swap the front and back buffers
 	glutSwapBuffers();
-	*/
+	
 }
 
 /*=================================================================================================
@@ -532,6 +564,11 @@ void init( void )
 
 	// Create axis buffers
 	CreateAxisBuffers();
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0.0, 500.0, 500.0, 0.0);
 
 	//
 	// Consider calling a function to create your object here
