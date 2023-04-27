@@ -31,17 +31,7 @@ bool mouse_states[8];
 
 // Other parameters
 bool draw_wireframe = false;
-	//eye position
-struct EyePos {
-	float x;
-	float y;
-	float z;
-	EyePos() {
-		x = 0.0f;
-		y = 3.0f;
-		z = 3.0f;
-	}
-};
+
 
 /*=================================================================================================
 	SHADERS & TRANSFORMATIONS
@@ -128,6 +118,19 @@ GLuint norm_VBO[2];
 std::vector<glm::vec4> norm_vertices;
 std::vector<glm::vec4> norm_colors;
 
+//temp
+GLuint triangle_VAO;
+GLuint triangle_VBO[3]; 
+std::vector<glm::vec4> triangle_vertices;
+std::vector<glm::vec4> triangle_color;
+std::vector<glm::vec4> triangle_normal;
+
+//plane
+GLuint plane_VAO;
+GLuint plane_VBO[2];
+std::vector<glm::vec4> plane_vertices;
+std::vector<glm::vec4> plane_colors;
+
 
 /*=================================================================================================
 	HELPER FUNCTIONS
@@ -142,6 +145,17 @@ void window_to_scene( int wx, int wy, float& sx, float& sy )
 /*=================================================================================================
 	SHADERS
 =================================================================================================*/
+//eye position
+struct EyePos {
+	float x;
+	float y;
+	float z;
+	EyePos() {
+		x = 0.0f;
+		y = 3.0f;
+		z = 3.0f;
+	}
+};
 EyePos eyePos;
 void CreateTransformationMatrices( void )
 {
@@ -151,7 +165,7 @@ void CreateTransformationMatrices( void )
 	// VIEW MATRIX
 
 	glm::vec3 eye   ( eyePos.x, eyePos.y, eyePos.z );
-	glm::vec3 center( 0.0, 0.0, 0.0 );
+	glm::vec3 center( 0.0f, 0.0f, 0.0f );
 	glm::vec3 up    ( 0.0, 1.0, 0.0 );
 
 	PerspViewMatrix = glm::lookAt( eye, center, up );
@@ -163,6 +177,118 @@ void CreateTransformationMatrices( void )
 	PerspModelMatrix = glm::scale( PerspModelMatrix, glm::vec3( perspZoom ) );
 }
 
+//RAY TRACING
+struct ViewP {
+	float x;
+	float y;
+	float z;
+	glm::vec3 v1;
+	glm::vec3 v2;
+
+	ViewP() {
+		//camera vector
+		glm::vec3 v0(eyePos.x, eyePos.y, eyePos.z);
+		std::cout << v0.x << " " << v0.y << " " << v0.z << std::endl;
+
+		//perpenducular vector to the direction vector --> x direction
+		v1 = glm::vec3(-1.0f, 0.0f, 0.0f);
+		std::cout << v1.x << " " << v1.y << " " << v1.z << std::endl;
+
+
+		//cross product of direction vector and perpendicular vector 
+		v2 = glm::vec3(glm::normalize(cross(v1, v0)));
+		std::cout << v2.x << " " << v2.y << " " << v2.z << std::endl;
+		
+		//distance of camera and plane
+		float d = 1.5f;
+		x = eyePos.x / d + v1.x;
+		y = eyePos.y / d - v1.y - v2.y;
+		z = eyePos.z / d - v1.z - v2.z;
+		std::cout << x << " " << y << " " << z << std::endl;
+
+
+	}
+
+};
+glm::vec3 operator*(float scalar, const glm::vec3& v) {
+	return glm::vec3(scalar * v.x, scalar * v.y, scalar * v.z);
+}
+glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int maxDepth) {
+	float intersectionT = 10.0f;
+	glm::vec3 color(1.0f,1.0f,1.0f);
+	glm::vec3 z(10.0f,10.0f,10.0f);
+	int depth = maxDepth;
+	float p_rg = 1.0f;
+	float p_tg = 1.0f;
+	// Part 1:: nonrecursive computations
+	for (float t = 0; t <= 10.f; t += 0.1f) {
+		//ray equation : s = starting point of ray at camera
+		//				 u = direction vector of the ray
+		//				 t = parameter
+		glm::vec3 ray(glm::normalize(s + t * u));
+		//normal vector of triangle
+		glm::vec3 v0(triangle_vertices[0]);
+		glm::vec3 v1(triangle_vertices[1]);
+		glm::vec3 v2(triangle_vertices[2]);
+
+		glm::vec3 n(glm::normalize(glm::cross(v1 - v0, v2 - v0)));
+
+
+		//dot product of the triangle's normal vector with the ray's direction vector
+		float d = glm::dot(n, ray);
+
+		//if it intersect any point
+		//let z = first intersection point
+		//let n = normal at the intersection point
+		if (abs(d) < abs(intersectionT)) {
+			intersectionT = d;
+			z = ray;
+		}
+
+	}
+	//if no point was intersected, return the background color;
+	//if (intersectionT == 10.0f) {
+	//	std::cout << "hi" << std::endl;
+	//	return glm::vec3(0.0f, 1.0f, 0.0f);
+	//}
+	////for each light, generate a shadow feeler from z to the light
+	////one light for now
+	////position of the light source:
+	//int t = 0;
+	//glm::vec3 L(3.0f, 0.0f, 3.0f);
+	////direction vector form intersection point to light
+	//glm::vec3 direction(normalize(L - z));
+	//glm::vec3 shadow_ray(z + t * direction);
+
+
+	//if (depth == 0) {
+	//	return color;
+	//}
+	
+	//if (p_rg != 0) {
+	//	glm::vec3 r(u - 2 * (glm::dot(u)))
+	//}
+
+	return color;
+}
+float iDif = 2 / InitWindowHeight;
+float jDif = 2 / InitWindowWidth;
+void RayTraceMain() {
+	glm::vec3 x(eyePos.x, eyePos.y, eyePos.z);
+	int maxDepth = 3;
+	ViewP viewP;
+	for (float i = -1.0f; i < 1.0f; i += iDif) {
+		for (float j = -1.0f; j < 1.0f; j += jDif) {
+			//set u = unit vector in the direction from x to p
+			glm::vec3 p(viewP.x, viewP.y, viewP.z);
+			glm::vec3 u(glm::normalize(p - x));
+			//call RayTrace
+			glm::vec4 color(RayTrace(x, u, maxDepth), 1.0f);
+
+
+		}
+	}
+}
 void CreateShaders( void )
 {
 	// Renders without any transformations
@@ -175,6 +301,7 @@ void CreateShaders( void )
 	// Additional shaders would be defined here
 	//
 }
+
 
 /*=================================================================================================
 	BUFFERS
@@ -210,6 +337,101 @@ void CreateAxisBuffers( void )
 //
 //void CreateMyOwnObject( void ) ...
 //
+void CreateTriangle() {
+
+	glm::vec4 v0(-0.5f, 0.0f, 0.0f, 1.0f);
+	glm::vec4 v1(0.5f, 0.0f, 0.0f, 1.0f);
+	glm::vec4 v2(0.0f, 0.5f, 0.0f, 1.0f);
+	triangle_vertices.push_back(v0);
+	triangle_vertices.push_back(v1);
+	triangle_vertices.push_back(v2);
+
+	for (int i = 0; i < triangle_vertices.size(); i++) {
+		triangle_color.push_back(glm::vec4(1.0f,0.0f,0.0f,1.0f));
+	}
+
+	for (int i = 0; i < triangle_vertices.size(); i++) {
+		triangle_normal.push_back(glm::vec4(glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f)), 1.0f));
+	}
+
+	glGenVertexArrays(1, &triangle_VAO);
+	glBindVertexArray(triangle_VAO);
+
+	glGenBuffers(3, &triangle_VBO[0]);
+	//first buffer
+	glBindBuffer(GL_ARRAY_BUFFER, triangle_VBO[0]);
+	glBufferData(GL_ARRAY_BUFFER, triangle_vertices.size() * sizeof(glm::vec4), &triangle_vertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void*)0);
+	glEnableVertexAttribArray(0);
+	//Second array
+	glBindBuffer(GL_ARRAY_BUFFER, triangle_VBO[1]);
+	glBufferData(GL_ARRAY_BUFFER, triangle_color.size() * sizeof(glm::vec4), &triangle_color[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void*)0);
+	glEnableVertexAttribArray(1);
+	//thrid array
+	glBindBuffer(GL_ARRAY_BUFFER, triangle_VBO[2]);
+	glBufferData(GL_ARRAY_BUFFER, triangle_normal.size() * sizeof(glm::vec4), &triangle_normal[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void*)0);
+	glEnableVertexAttribArray(2);
+
+	glBindVertexArray(0);
+}
+
+void CreatePlane(void) {
+	ViewP viewp;
+	float initY = viewp.y;
+	float initZ = viewp.z;
+	iDif = 2.0f/800.0f;
+	jDif = 2.0f/800.0f;
+	float yzdif = sqrt(iDif * iDif / 2); 
+	//create square
+	for (float i = -1.0f; i < 1.0f; i += iDif) {
+		for (float j = -1.0f; j < 1.0f;j += jDif) {
+			//first triangle
+			plane_vertices.push_back(glm::vec4(viewp.x, viewp.y, viewp.z, 1.0f));
+			plane_vertices.push_back(glm::vec4(viewp.x + 0.5f, viewp.y, viewp.z, 1.0f));
+			plane_vertices.push_back(glm::vec4(viewp.x, viewp.y + yzdif, viewp.z - yzdif, 1.0f));
+			//second triangle
+			plane_vertices.push_back(glm::vec4(viewp.x, viewp.y + yzdif, viewp.z - yzdif, 1.0f));
+			plane_vertices.push_back(glm::vec4(viewp.x + 0.5f, viewp.y, viewp.z, 1.0f));
+			plane_vertices.push_back(glm::vec4(viewp.x + 0.5f, viewp.y + yzdif, viewp.z - yzdif, 1.0f));
+			viewp.y += yzdif;
+			viewp.z -= yzdif;
+		}
+		viewp.y = initY;
+		viewp.z = initZ;
+		viewp.x += iDif;
+	}
+
+	RayTraceMain();
+	for (int i = 0; i < plane_vertices.size();i++) {
+		plane_colors.push_back(glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
+	}
+
+
+
+	glGenVertexArrays(1, &plane_VAO);
+	glBindVertexArray(plane_VAO);
+
+	glGenBuffers(2, &plane_VBO[0]);
+	//first buffer
+	glBindBuffer(GL_ARRAY_BUFFER, plane_VBO[0]);
+	glBufferData(GL_ARRAY_BUFFER, plane_vertices.size() * sizeof(glm::vec4), &plane_vertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void*)0);
+	glEnableVertexAttribArray(0);
+	//Second array
+	glBindBuffer(GL_ARRAY_BUFFER, plane_VBO[1]);
+	glBufferData(GL_ARRAY_BUFFER, plane_colors.size() * sizeof(glm::vec4), &plane_colors[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void*)0);
+	glEnableVertexAttribArray(1);
+	////thrid array
+	//glBindBuffer(GL_ARRAY_BUFFER, plane_VBO[2]);
+	//glBufferData(GL_ARRAY_BUFFER, triangle_normal.size() * sizeof(glm::vec4), &triangle_normal[0], GL_STATIC_DRAW);
+	//glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void*)0);
+	//glEnableVertexAttribArray(2);
+
+	glBindVertexArray(0);
+}
 
 /*=================================================================================================
 	CALLBACKS
@@ -235,7 +457,6 @@ void reshape_func( int width, int height )
 	glViewport( 0, 0, width, height );
 	glutPostRedisplay();
 }
-
 void keyboard_func( unsigned char key, int x, int y )
 {
 	key_states[ key ] = true;
@@ -252,6 +473,22 @@ void keyboard_func( unsigned char key, int x, int y )
 		//	eyePos.z += 0.05f;
 		//	break;
 		//}
+		//case 'd':
+		//{
+		//	sphere_vertices.clear();
+		//	sphere_colors.clear();
+		//	sphere_normal.clear();
+		//	spherex += 0.01f; spherez += 0.01f;
+		//	CreateSphere(spherex, spherey, spherez, r);
+
+		//	break;
+		//}
+		case 'f':
+		{
+			glDeleteVertexArrays(1, &cylinder_VAO);
+			std::cout << "removal" << std::endl;
+			break;
+		}
 		case '1':
 		{
 			draw_wireframe = !draw_wireframe;
@@ -397,12 +634,33 @@ void display_func( void )
 	glBindVertexArray(floor_VAO);
 	glDrawArrays(GL_TRIANGLES, 0, floor_vertices.size());
 	// Unbind when done
-	glBindVertexArray( 0 );
+
+	//triangle
+	glBindVertexArray(triangle_VAO);
+	glDrawArrays(GL_TRIANGLES, 0, triangle_vertices.size());
+
+	//plane
+	glBindVertexArray(plane_VAO);
+	glDrawArrays(GL_TRIANGLES, 0, plane_vertices.size());
+
+	glBindVertexArray(0);
+
 
 	// Swap the front and back buffers
 	glutSwapBuffers();
 }
-
+float spherex = 0.0f, spherey = 0.5f, spherez = 0.0f, r = 0.5f;
+float theta = 0;
+void update(int value) {
+	sphere_vertices.clear();
+	sphere_colors.clear();
+	sphere_normal.clear();
+	theta += 1;
+	spherex += cos(theta); spherez += sin(theta);
+	CreateSphere(spherex, spherey, spherez, r);
+	glutPostRedisplay();
+	glutTimerFunc(60, update, 0);
+}
 /*=================================================================================================
 	INIT
 =================================================================================================*/
@@ -429,13 +687,16 @@ void init( void )
 	//
 	// Consider calling a function to create your object here
 	//
-	CreateSphere(0.0f,0.7f,0.0f,0.7f);
+	//CreateSphere(0.0f,0.7f,0.0f,0.7f);
 	CreateSphere(1.0f, 0.5f, 1.0f,0.5f); //(x,y,z,radius)
 	CreateSphere(3.0f, 0.0f, 3.0f, 0.1f);
 	CreateCylinder(-1.0f, 0.0f, 1.0f,0.5f,1.0f);// (x,y,z,radius, height)
 	CreateCone(0.0f, 0.0f, -1.5f, 0.5f, 1.0f);// (x,y,z,radius, height)
 	CreateCuboid(-1.5f, 0.0f, -1.5f, 1.0f, 1.5f, 1.25f);//(x,y,z,width,length,height)
-
+	CreateCylinder(2.0f, 0.0f, 0.0f, 0.2f, 2.0f);
+	
+	CreateTriangle();
+	CreatePlane();
 	//CreateNormLines();
 
 
@@ -479,6 +740,8 @@ int main( int argc, char** argv )
 	glutMotionFunc( active_motion_func );
 	glutPassiveMotionFunc( passive_motion_func );
 
+	//moving function
+	//glutTimerFunc(25, update, 0);
 	// Do program initialization
 	init();
 
