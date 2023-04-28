@@ -178,54 +178,64 @@ void CreateTransformationMatrices( void )
 }
 
 //RAY TRACING
-struct ViewP {
-	float x;
-	float y;
-	float z;
-	glm::vec3 v1;
-	glm::vec3 v2;
+//struct ViewP {
+//	float x;
+//	float y;
+//	float z;
+//	glm::vec3 v1;
+//	glm::vec3 v2;
+//
+//	ViewP() {
+//		//camera vector
+//		glm::vec3 v0(eyePos.x, eyePos.y, eyePos.z);
+//		std::cout << v0.x << " " << v0.y << " " << v0.z << std::endl;
+//
+//		//perpenducular vector to the direction vector --> x direction
+//		v1 = glm::vec3(-1.0f, 0.0f, 0.0f);
+//		std::cout << v1.x << " " << v1.y << " " << v1.z << std::endl;
+//
+//
+//		//cross product of direction vector and perpendicular vector 
+//		v2 = glm::vec3(glm::normalize(cross(v1, v0)));
+//		std::cout << v2.x << " " << v2.y << " " << v2.z << std::endl;
+//		
+//		//distance of camera and plane
+//		x = eyePos.x -1.0f + v1.x;
+//		y = eyePos.y -1.0f - v1.y - v2.y;
+//		z = eyePos.z -1.0f - v1.z - v2.z;
+//		std::cout << x << " " << y << " " << z << std::endl;
+//
+//
+//	}
+//
+//};
 
-	ViewP() {
-		//camera vector
-		glm::vec3 v0(eyePos.x, eyePos.y, eyePos.z);
-		std::cout << v0.x << " " << v0.y << " " << v0.z << std::endl;
-
-		//perpenducular vector to the direction vector --> x direction
-		v1 = glm::vec3(-1.0f, 0.0f, 0.0f);
-		std::cout << v1.x << " " << v1.y << " " << v1.z << std::endl;
-
-
-		//cross product of direction vector and perpendicular vector 
-		v2 = glm::vec3(glm::normalize(cross(v1, v0)));
-		std::cout << v2.x << " " << v2.y << " " << v2.z << std::endl;
-		
-		//distance of camera and plane
-		float d = 1.5f;
-		x = eyePos.x / d + v1.x;
-		y = eyePos.y / d - v1.y - v2.y;
-		z = eyePos.z / d - v1.z - v2.z;
-		std::cout << x << " " << y << " " << z << std::endl;
-
-
-	}
-
-};
+//scalar multiply vec3
 glm::vec3 operator*(float scalar, const glm::vec3& v) {
 	return glm::vec3(scalar * v.x, scalar * v.y, scalar * v.z);
 }
+
 glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int maxDepth) {
-	float intersectionT = 10.0f;
-	glm::vec3 color(1.0f,1.0f,1.0f);
-	glm::vec3 z(10.0f,10.0f,10.0f);
+	//s is the starting postion of the ray
+	//u is the unit vector in the direction of the ray
+	//depth is the trace depth
+	//return value is a 3 tuple of color vlaue(R,G,B);
+
+	// Part 1:: nonrecursive computations
+
+	float intersection = 10.0f;
+	glm::vec3 color(0.0f,0.0f,0.0f);
+	glm::vec3 z(0.0f,0.0f,0.0f);
+
 	int depth = maxDepth;
 	float p_rg = 1.0f;
 	float p_tg = 1.0f;
-	// Part 1:: nonrecursive computations
-	for (float t = 0; t <= 10.f; t += 0.1f) {
-		//ray equation : s = starting point of ray at camera
+	for (float t = 1.0f; t <= 10.0f; t+= 0.01f) {
+		//r is a vector that goes from the center to the unit vector starting at the camera at t
+		//r equation : s = starting point of ray at camera
 		//				 u = direction vector of the ray
 		//				 t = parameter
-		glm::vec3 ray(glm::normalize(s + t * u));
+		glm::vec3 r(glm::normalize(s + (t * u)));
 		//normal vector of triangle
 		glm::vec3 v0(triangle_vertices[0]);
 		glm::vec3 v1(triangle_vertices[1]);
@@ -233,59 +243,49 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int maxDepth) {
 
 		glm::vec3 n(glm::normalize(glm::cross(v1 - v0, v2 - v0)));
 
-
 		//dot product of the triangle's normal vector with the ray's direction vector
-		float d = glm::dot(n, ray);
+		float d = glm::dot(n, r);
 
-		//if it intersect any point
+		//std::cout << d << std::endl;
+
+		//if r dot n is zero it means that the two are orthoganal
+		//if r and n are orthoganal that means at t the ray intersect with the shape
+		
+		//if intersected
 		//let z = first intersection point
 		//let n = normal at the intersection point
-		if (abs(d) < abs(intersectionT)) {
-			intersectionT = d;
-			z = ray;
+		if (d < 0.001f && d > -0.001f ) {
+			//std::cout << d << std::endl;
+			return glm::vec3(1.0f, 0.0f, 0.0f);
+			break;
 		}
 
+
 	}
-	//if no point was intersected, return the background color;
-	//if (intersectionT == 10.0f) {
-	//	std::cout << "hi" << std::endl;
-	//	return glm::vec3(0.0f, 1.0f, 0.0f);
-	//}
-	////for each light, generate a shadow feeler from z to the light
-	////one light for now
-	////position of the light source:
-	//int t = 0;
-	//glm::vec3 L(3.0f, 0.0f, 3.0f);
-	////direction vector form intersection point to light
-	//glm::vec3 direction(normalize(L - z));
-	//glm::vec3 shadow_ray(z + t * direction);
-
-
-	//if (depth == 0) {
-	//	return color;
-	//}
-	
-	//if (p_rg != 0) {
-	//	glm::vec3 r(u - 2 * (glm::dot(u)))
-	//}
-
+	//if not intersected
 	return color;
 }
-float iDif = 2 / InitWindowHeight;
-float jDif = 2 / InitWindowWidth;
+
 void RayTraceMain() {
-	glm::vec3 x(eyePos.x, eyePos.y, eyePos.z);
-	int maxDepth = 3;
-	ViewP viewP;
-	for (float i = -1.0f; i < 1.0f; i += iDif) {
-		for (float j = -1.0f; j < 1.0f; j += jDif) {
-			//set u = unit vector in the direction from x to p
-			glm::vec3 p(viewP.x, viewP.y, viewP.z);
-			glm::vec3 u(glm::normalize(p - x));
-			//call RayTrace
-			glm::vec4 color(RayTrace(x, u, maxDepth), 1.0f);
+	glm::vec4 x(eyePos.x, eyePos.y, eyePos.z,1.0f);  // let x be the postion of the viewer
+	int maxDepth = 3;							// let maxDepth be a positive integer
 
+	float length = 2.0f / 800.0f; //length of the pixel
+	//For each pixel p in the viewport
+	for (int i = 0; i < plane_vertices.size();i += 6) {
+		//calculate the middle of the pixel p 
+		glm::vec4 v0(plane_vertices[i]);
+		//find the middle of the width and height of the pixel by dividing two
+		float midpoint = length / 2.0f;
+		glm::vec4 p(v0 + glm::vec4(midpoint)); // found p
 
+		//set u = unit vector in the direction from x to p (camera to pixel);
+		glm::vec4 u(glm::normalize(p - x));
+		//call RayTrace
+		glm::vec3 color(RayTrace(x, u, maxDepth));
+		//assign pixel p the color return by Ray Trace
+		for (int j = 0; j < 6;j++) {
+			plane_colors.push_back(glm::vec4(color,1.0f));
 		}
 	}
 }
@@ -378,37 +378,41 @@ void CreateTriangle() {
 }
 
 void CreatePlane(void) {
-	ViewP viewp;
-	float initY = viewp.y;
-	float initZ = viewp.z;
-	iDif = 2.0f/800.0f;
-	jDif = 2.0f/800.0f;
-	float yzdif = sqrt(iDif * iDif / 2); 
-	//create square
-	for (float i = -1.0f; i < 1.0f; i += iDif) {
-		for (float j = -1.0f; j < 1.0f;j += jDif) {
+	glm::vec3 cameraPos(0.0f, 3.0f, 3.0f);
+	//vector of the plane
+	glm::vec3 normalv1(1.0f, 0.0f, 0.0f);
+	glm::vec3 normalv2(glm::normalize(glm::cross(cameraPos, normalv1)));
+
+	//get center plane 
+	glm::vec3 planePos(0.0f, 2.0f, 2.0f);
+	//get bottom left starting point 
+	planePos = planePos - glm::vec3(normalv1.x, normalv2.y, normalv2.z);
+
+	//calculate the width and height difference with 800 pixels in 2.0f x 2.0f 
+	float iDif = 2.0f / 800.0f;
+	float jDif = 2.0f / 800.0f;
+
+	float initPlanex = planePos.x;
+	//calculate the width and heihght of y and z with idif being the hypotnuse using the equation y^2 + z^2 = idif^2 
+	float yzDif = sqrt(jDif * jDif/2);
+	for (float i = -1.0f; i < 1.0f;i += iDif) { // in the y and z direction
+		for (float j = -1.0f; j < 1.0f; j += jDif) { // in the x direction
+			//jDif is the hypotnuse, find the y and z values with the hypotnuse
 			//first triangle
-			plane_vertices.push_back(glm::vec4(viewp.x, viewp.y, viewp.z, 1.0f));
-			plane_vertices.push_back(glm::vec4(viewp.x + 0.5f, viewp.y, viewp.z, 1.0f));
-			plane_vertices.push_back(glm::vec4(viewp.x, viewp.y + yzdif, viewp.z - yzdif, 1.0f));
+			plane_vertices.push_back(glm::vec4(planePos.x, planePos.y, planePos.z, 1.0f));
+			plane_vertices.push_back(glm::vec4(planePos.x + iDif, planePos.y, planePos.z, 1.0f));
+			plane_vertices.push_back(glm::vec4(planePos.x, planePos.y + yzDif , planePos.z - yzDif, 1.0f)); 
 			//second triangle
-			plane_vertices.push_back(glm::vec4(viewp.x, viewp.y + yzdif, viewp.z - yzdif, 1.0f));
-			plane_vertices.push_back(glm::vec4(viewp.x + 0.5f, viewp.y, viewp.z, 1.0f));
-			plane_vertices.push_back(glm::vec4(viewp.x + 0.5f, viewp.y + yzdif, viewp.z - yzdif, 1.0f));
-			viewp.y += yzdif;
-			viewp.z -= yzdif;
+			plane_vertices.push_back(glm::vec4(planePos.x, planePos.y + yzDif, planePos.z - yzDif, 1.0f)); 
+			plane_vertices.push_back(glm::vec4(planePos.x + iDif, planePos.y, planePos.z, 1.0f));
+			plane_vertices.push_back(glm::vec4(planePos.x + iDif, planePos.y + yzDif, planePos.z - yzDif, 1.0f));
+			planePos.x += iDif;
 		}
-		viewp.y = initY;
-		viewp.z = initZ;
-		viewp.x += iDif;
+		planePos.x = initPlanex;
+		planePos.y += yzDif;
+		planePos.z -= yzDif;
 	}
-
 	RayTraceMain();
-	for (int i = 0; i < plane_vertices.size();i++) {
-		plane_colors.push_back(glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
-	}
-
-
 
 	glGenVertexArrays(1, &plane_VAO);
 	glBindVertexArray(plane_VAO);
