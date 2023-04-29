@@ -223,51 +223,60 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int maxDepth) {
 
 	// Part 1:: nonrecursive computations
 
-	float intersection = 10.0f;
-	glm::vec3 color(0.0f,0.0f,0.0f);
-	glm::vec3 z(0.0f,0.0f,0.0f);
+	bool intersection = false;
+	glm::vec3 triangle_color(1.0f, 0.0f, 0.0f);
+	glm::vec3 background_color(0.0f,0.0f,0.0f);
 
 	int depth = maxDepth;
 	float p_rg = 1.0f;
 	float p_tg = 1.0f;
-	for (float t = 1.0f; t <= 10.0f; t+= 0.01f) {
+	for (float t = 0.0f; t <= 10.0f; t+= 0.1f) {
 		//r is a vector that goes from the center to the unit vector starting at the camera at t
 		//r equation : s = starting point of ray at camera
 		//				 u = direction vector of the ray
 		//				 t = parameter
-		glm::vec3 r(glm::normalize(s + (t * u)));
+		glm::vec3 r = (t * u) + s;
+		//CreateSphere(r.x, r.y, r.z, 0.1f);
 		//normal vector of triangle
 		glm::vec3 v0(triangle_vertices[0]);
 		glm::vec3 v1(triangle_vertices[1]);
 		glm::vec3 v2(triangle_vertices[2]);
 
-		glm::vec3 n(glm::normalize(glm::cross(v1 - v0, v2 - v0)));
+		glm::vec3 A(v1 - v0);
+		glm::vec3 B(v2 - v0);
 
-		//dot product of the triangle's normal vector with the ray's direction vector
-		float d = glm::dot(n, r);
+		glm::vec3 C = cross(A, B);
+		glm::normalize(C);
 
-		//std::cout << d << std::endl;
+		//triangle lies on a plane, find the distance from the origin to the plane
+		float D = - glm::dot(C, v0);
 
-		//if r dot n is zero it means that the two are orthoganal
-		//if r and n are orthoganal that means at t the ray intersect with the shape
-		
-		//if intersected
-		//let z = first intersection point
-		//let n = normal at the intersection point
-		if (d < 0.001f && d > -0.001f ) {
-			//std::cout << d << std::endl;
-			return glm::vec3(1.0f, 0.0f, 0.0f);
-			break;
+		//find the distance between camera and intersection point
+		float dist = -(glm::dot(C, s) + D) / glm::dot(C, u);
+
+		glm::vec3 p = dist * u + s;
+
+		glm::vec3 edge0(v1 - v0);
+		glm::vec3 edge1(v2 - v1);
+		glm::vec3 edge2(v0 - v2);
+		glm::vec3 C0 = p - v0;
+		glm::vec3 C1 = p - v1;
+		glm::vec3 C2 = p - v2;
+		if( glm::dot(C, glm::cross(edge0,C0)) > 0 &&
+			glm::dot(C, glm::cross(edge1, C1)) > 0 &&
+			glm::dot(C, glm::cross(edge2, C2)) > 0) {
+			intersection = true;
 		}
-
-
 	}
 	//if not intersected
-	return color;
+	if (intersection == false) {
+		return background_color;
+	}
+	return triangle_color;
 }
 
 void RayTraceMain() {
-	glm::vec4 x(eyePos.x, eyePos.y, eyePos.z,1.0f);  // let x be the postion of the viewer
+	glm::vec3 x(eyePos.x, eyePos.y, eyePos.z);  // let x be the postion of the viewer
 	int maxDepth = 3;							// let maxDepth be a positive integer
 
 	float length = 2.0f / 800.0f; //length of the pixel
@@ -277,15 +286,15 @@ void RayTraceMain() {
 		glm::vec4 v0(plane_vertices[i]);
 		//find the middle of the width and height of the pixel by dividing two
 		float midpoint = length / 2.0f;
-		glm::vec4 p(v0 + glm::vec4(midpoint)); // found p
+		glm::vec3 p(v0.x + midpoint , v0.y +midpoint, v0.z - midpoint); // found p
 
 		//set u = unit vector in the direction from x to p (camera to pixel);
-		glm::vec4 u(glm::normalize(p - x));
+		glm::vec3 u(glm::normalize(p - x));
 		//call RayTrace
 		glm::vec3 color(RayTrace(x, u, maxDepth));
 		//assign pixel p the color return by Ray Trace
 		for (int j = 0; j < 6;j++) {
-			plane_colors.push_back(glm::vec4(color,1.0f));
+			plane_colors.push_back(glm::vec4(color,0.1f));
 		}
 	}
 }
@@ -397,7 +406,6 @@ void CreatePlane(void) {
 	float yzDif = sqrt(jDif * jDif/2);
 	for (float i = -1.0f; i < 1.0f;i += iDif) { // in the y and z direction
 		for (float j = -1.0f; j < 1.0f; j += jDif) { // in the x direction
-			//jDif is the hypotnuse, find the y and z values with the hypotnuse
 			//first triangle
 			plane_vertices.push_back(glm::vec4(planePos.x, planePos.y, planePos.z, 1.0f));
 			plane_vertices.push_back(glm::vec4(planePos.x + iDif, planePos.y, planePos.z, 1.0f));
