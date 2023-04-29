@@ -82,6 +82,13 @@ std::vector<glm::vec3> midpoints;
 
 glm::vec3 lightSource;
 
+glm::vec3 Ia(0.5f, 0.5f, 0.5f);
+glm::vec3 Id(0.7f, 0.7f, 0.7f);
+glm::vec3 Is(1.0f, 1.0f, 1.0f);
+
+//ka & kd are vert color
+glm::vec3 ks(1.0f, 1.0f, 1.0f);
+
 /*=================================================================================================
 	HELPER FUNCTIONS
 =================================================================================================*/
@@ -145,7 +152,7 @@ bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
 		return false;
 	}
 		
-	glm::normalize(vector);
+	vector = glm::normalize(vector);
 	float lowestT = maxDistance;
 
 	for (int i = 0; i < normals.size(); i++)
@@ -235,16 +242,30 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	//std::cout << "beginning check if item intersects" << std::endl;
 	//send white value if empty
 	if (!intersect)
-		return glm::vec3(1.0f, 1.0f, 1.0f);
+		return glm::vec3(0.0f, 0.0f, 0.0f);
 
 
 	//ray = s + (lowestT * u);
 	//std::cout << "lowest ray intersection " << ray[0] << "," << ray[1] << "," << ray[2] << std::endl;
 	ray = s + (lowestT * u);
 	glm::vec3 pixColor = glm::vec3(objectColor[lowestPos * 12], objectColor[lowestPos * 12 + 1], objectColor[lowestPos * 12 + 2]);
-	if(checkLight(ray, lightSource, normals[lowestPos]))
-		return pixColor;
-	return pixColor*0.75f;
+
+
+	if (checkLight(ray, lightSource, normals[lowestPos]))
+	{
+		glm::vec3 lightray = lightSource - ray;
+		lightray = glm::normalize(lightray);
+		glm::vec3 lowNormal = normals[lowestPos];
+		lowNormal = glm::normalize(lowNormal);
+		glm::vec3 r = ((2 * glm::dot(lightray, lowNormal) * lowNormal) - lightray);
+		r = glm::normalize(r);
+		glm::vec3 v = s - ray;
+		v = glm::normalize(v);
+		glm::vec3 I = (Ia*pixColor) + (Id * pixColor * (glm::dot(lightray, lowNormal))) + (Is*ks*glm::dot(v,r));
+		return I;
+	}
+		
+	return pixColor*0.5f;
 	//return the color of of of the verticies on the triangle with the lowest distance
 	//change later
 	//return glm::vec3(objectColor[lowestPos*12], objectColor[lowestPos * 12], objectColor[lowestPos * 12]);
@@ -536,7 +557,7 @@ void createNormals()
 		glm::vec3 AC = v3 - v1;
 		glm::vec3 CB = v3 - v2;
 		glm::vec3 direction = glm::cross(AC, CB);
-		glm::normalize(direction);
+		direction = glm::normalize(direction);
 		normals.push_back(direction);
 
 		glm::vec3 center = { (v1[0] + v2[0] + v3[0]) / 3,
