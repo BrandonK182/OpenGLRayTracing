@@ -42,6 +42,8 @@ struct EyePos {
 	}
 };
 
+float maxDistance = 100;
+
 /*=================================================================================================
 	SHADERS & TRANSFORMATIONS
 =================================================================================================*/
@@ -78,6 +80,8 @@ std::vector<float> objectColor;
 std::vector<glm::vec3> normals;
 std::vector<glm::vec3> midpoints;
 
+glm::vec3 lightSource;
+
 /*=================================================================================================
 	HELPER FUNCTIONS
 =================================================================================================*/
@@ -86,6 +90,37 @@ void window_to_scene( int wx, int wy, float& sx, float& sy )
 {
 	sx = ( 2.0f * (float)wx / WindowWidth ) - 1.0f;
 	sy = 1.0f - ( 2.0f * (float)wy / WindowHeight );
+}
+
+void updateViewVector()
+{
+	float res = 800;
+	eyePosition = glm::vec3(eyePos.x, eyePos.y, eyePos.z);
+	for (int i = 0; i < res; i++)
+	{
+		for (int j = 0; j < res; j++)
+		{
+			//vector from the camera to the pixel of the view plane
+			viewPlaneVect[i][j] = viewPlaneCoor[i][j] - eyePosition;
+		}
+	}
+}
+
+void moveCamera(float x, float y, float z)
+{
+	int res = 800;
+	eyePos.x += x;
+	eyePos.y += y;
+	eyePos.z += z;
+	for (int i = 0; i < res; i++)
+	{
+		for (int j = 0; j < res; j++)
+		{
+			viewPlaneCoor[i][j][0] += x;
+			viewPlaneCoor[i][j][1] += y;
+			viewPlaneCoor[i][j][2] += z;
+		}	
+	}
 }
 
 bool SameSide(glm::vec3 p1, glm::vec3 p2, glm::vec3 a, glm::vec3 b)
@@ -100,10 +135,47 @@ bool PointInTriangle(glm::vec3 p, glm::vec3 vert1, glm::vec3 vert2, glm::vec3 ve
 	return SameSide(p, vert1, vert2, vert3) && SameSide(p, vert2, vert1, vert3) && SameSide(p, vert3, vert1, vert2);
 }
 
+bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
+{
+	glm::vec3 vector = light - point;
+
+	//check if the light is the opposite direction to the triangle face
+	if (glm::dot(vector, normal) < 0)
+		return false;
+	glm::normalize(vector);
+	float lowestT = maxDistance;
+	for (int i = 0; i < normals.size(); i++)
+	{
+		//std::cout << "comparing to polygon " << i << std::endl;
+		float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(point, normals[i]) / (glm::dot(vector, normals[i])));
+		glm::vec3 ray = point + (t * vector);
+
+		//std::cout << "creating the vectors for each of the object" << std::endl;
+		glm::vec3 v1(objectVert[i * 12], objectVert[i * 12 + 1], objectVert[i * 12 + 2]);
+		glm::vec3 v2(objectVert[i * 12 + 4], objectVert[i * 12 + 5], objectVert[i * 12 + 6]);
+		glm::vec3 v3(objectVert[i * 12 + 8], objectVert[i * 12 + 9], objectVert[i * 12 + 10]);
+
+		//std::cout << "checking if the point is in the triangle" << std::endl;
+		if (PointInTriangle(ray, v1, v2, v3))
+		{
+			//std::cout << " CONNECTION!!!!!!!       point connects to triangle" << std::endl;
+			//marks the ray as touching the triangle at some point
+			//checks if the contact is the closest contact point
+			if (t < lowestT && t > 0.01f)
+			{
+				//std::cout << "lower than max" << std::endl;
+				return false;
+			}
+		}
+	}
+	//does not intersect with any other triangles
+	return true;
+}
+
 glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	//ray in point s in direction u
 	bool intersect = false;
-	float lowestT = 100;
+	float lowestT = maxDistance;
 	int lowestPos = 0;
 	glm::vec3 ray; 
 	//std::cout << "begin raytracing     S: " << s[0] <<" , " <<  s[1]  << ", " << s[2] << " u: " << u[0] <<", " <<  u[1] << ", " << u[2] << std::endl;
@@ -124,7 +196,7 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 			//std::cout << " CONNECTION!!!!!!!       point connects to triangle" << std::endl;
 			//marks the ray as touching the triangle at some point
 			//checks if the contact is the closest contact point
-			if (t < lowestT)
+			if (t < lowestT && t > 0.01f)
 			{
 				//std::cout << "lower than max" << std::endl;
 				intersect = true;
@@ -142,7 +214,11 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 
 	//ray = s + (lowestT * u);
 	//std::cout << "lowest ray intersection " << ray[0] << "," << ray[1] << "," << ray[2] << std::endl;
-	return glm::vec3(1.0f, 0.0f, 0.0f);
+	ray = s + (lowestT * u);
+	glm::vec3 pixColor = glm::vec3(objectColor[lowestPos * 12], objectColor[lowestPos * 12 + 1], objectColor[lowestPos * 12 + 2]);
+	if(checkLight(ray, lightSource, normals[lowestPos]))
+		return pixColor;
+	return pixColor*0.75f;
 	//return the color of of of the verticies on the triangle with the lowest distance
 	//change later
 	//return glm::vec3(objectColor[lowestPos*12], objectColor[lowestPos * 12], objectColor[lowestPos * 12]);
@@ -167,7 +243,7 @@ void RayTraceMain()
 		}
 	}
 	std::cout << "draw cycle complete" << std::endl;
-
+	updateViewVector();
 }
 
 //creates plane that exists in -1x to 1x and -1y to 1y
@@ -187,37 +263,30 @@ void CreateViewPlane()
 			viewPlaneCoor[i][j][2] = 1.5f;
 		}
 	}
-	
-	for (int i = 0; i < res; i++)
-	{
-		for (int j = 0; j < res; j++)
-		{
-			//vector from the camera to the pixel of the view plane
-			viewPlaneVect[i][j] = eyePosition - viewPlaneCoor[i][j];
-		}
-	}
+
+	updateViewVector();
 }
 
 void BuildTestPyramid()
 {
+	//back face
+	objectVert.push_back(0.0f);
+	objectVert.push_back(0.5f);
+	objectVert.push_back(-1.0f);
+	objectVert.push_back(1.0f);
+
+	objectVert.push_back(0.0f);
+	objectVert.push_back(-0.5f);
+	objectVert.push_back(-1.0f);
+	objectVert.push_back(1.0f);
+
+	objectVert.push_back(1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(-0.5f);
+	objectVert.push_back(1.0f);
+
 	/*
 	//left face
-	objectVert.push_back(0.0f);
-	objectVert.push_back(2.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(1.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-	objectVert.push_back(1.0f);
-
-	//back face
 	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
@@ -241,19 +310,6 @@ void BuildTestPyramid()
 
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-		*/
-
-
-	//slanted face
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
 
@@ -262,12 +318,25 @@ void BuildTestPyramid()
 	objectVert.push_back(-1.0f);
 	objectVert.push_back(1.0f);
 
+	//slanted face
+	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
+
 	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
+
+	objectVert.push_back(0.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(-1.0f);
+	objectVert.push_back(1.0f);
+
+	*/
 	
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < objectVert.size()/4; i++)
 	{
 		objectColor.push_back(1.0f);
 		objectColor.push_back(0.0f);
@@ -398,16 +467,26 @@ void keyboard_func( unsigned char key, int x, int y )
 
 	switch( key )
 	{
-		//case 'w':
-		//{
-		//	eyePos.z -= 0.05f;
-		//	break;
-		//}
-		//case 's':
-		//{
-		//	eyePos.z += 0.05f;
-		//	break;
-		//}
+		case 'w':
+		{
+			moveCamera(0.0, 0.0, -0.05f);
+			break;
+		}
+		case 's':
+		{
+			moveCamera(0.0, 0.0, 0.05f);
+			break;
+		}
+		case 'a':
+		{
+			moveCamera(-0.05f, 0.0, 0.0);
+			break;
+		}
+		case 'd':
+		{
+			moveCamera(0.05f, 0.0, 0.0);
+			break;
+		}
 		case '1':
 		{
 			draw_wireframe = !draw_wireframe;
@@ -568,7 +647,7 @@ void init( void )
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D(0.0, 500.0, 500.0, 0.0);
+	gluOrtho2D(0.0, 800.0, 800.0, 0.0);
 
 	//
 	// Consider calling a function to create your object here
@@ -579,6 +658,8 @@ void init( void )
 	BuildTestPyramid();
 	std::cout << "finished test pyramid" << std::endl;
 	createNormals();
+	
+	lightSource = glm::vec3(0.0, 3.0, -2.0);
 
 	std::cout << "Finished initializing...\n\n";
 }
