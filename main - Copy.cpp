@@ -141,19 +141,35 @@ bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
 
 	//check if the light is the opposite direction to the triangle face
 	if (glm::dot(vector, normal) < 0)
+	{
 		return false;
+	}
+		
 	glm::normalize(vector);
 	float lowestT = maxDistance;
+
 	for (int i = 0; i < normals.size(); i++)
 	{
-		//std::cout << "comparing to polygon " << i << std::endl;
-		float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(point, normals[i]) / (glm::dot(vector, normals[i])));
-		glm::vec3 ray = point + (t * vector);
-
 		//std::cout << "creating the vectors for each of the object" << std::endl;
 		glm::vec3 v1(objectVert[i * 12], objectVert[i * 12 + 1], objectVert[i * 12 + 2]);
 		glm::vec3 v2(objectVert[i * 12 + 4], objectVert[i * 12 + 5], objectVert[i * 12 + 6]);
 		glm::vec3 v3(objectVert[i * 12 + 8], objectVert[i * 12 + 9], objectVert[i * 12 + 10]);
+
+		//std::cout << "comparing to polygon " << i << std::endl;
+
+		glm::vec3 A(v2 - v1);
+		glm::vec3 B(v3 - v1);
+
+		glm::vec3 C = cross(A, B);
+		float D = -glm::dot(C, v1);
+
+		//find the distance between camera and intersection point
+		float dist = -(glm::dot(C, point) + D) / glm::dot(C, vector);
+
+		//float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(point, normals[i]) / (glm::dot(vector, normals[i])));
+		glm::vec3 ray = point + (dist * vector);
+
+
 
 		//std::cout << "checking if the point is in the triangle" << std::endl;
 		if (PointInTriangle(ray, v1, v2, v3))
@@ -161,7 +177,7 @@ bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
 			//std::cout << " CONNECTION!!!!!!!       point connects to triangle" << std::endl;
 			//marks the ray as touching the triangle at some point
 			//checks if the contact is the closest contact point
-			if (t < lowestT && t > 0.01f)
+			if (dist < lowestT && dist > 0.01f)
 			{
 				//std::cout << "lower than max" << std::endl;
 				return false;
@@ -181,14 +197,24 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	//std::cout << "begin raytracing     S: " << s[0] <<" , " <<  s[1]  << ", " << s[2] << " u: " << u[0] <<", " <<  u[1] << ", " << u[2] << std::endl;
 	for (int i = 0; i < normals.size(); i++)
 	{
-		//std::cout << "comparing to polygon " << i << std::endl;
-		float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(s, normals[i]) / (glm::dot(u, normals[i])));
-		ray = s + (t * u);
-
 		//std::cout << "creating the vectors for each of the object" << std::endl;
 		glm::vec3 v1(objectVert[i * 12], objectVert[i * 12 + 1], objectVert[i * 12 + 2]);
 		glm::vec3 v2(objectVert[i * 12 + 4], objectVert[i * 12 + 5], objectVert[i * 12 + 6]);
 		glm::vec3 v3(objectVert[i * 12 + 8], objectVert[i * 12 + 9], objectVert[i * 12 + 10]);
+
+		//std::cout << "comparing to polygon " << i << std::endl;
+		glm::vec3 A(v2 - v1);
+		glm::vec3 B(v3 - v1);
+
+		glm::vec3 C = cross(A, B);
+		float D = -glm::dot(C, v1);
+
+		//find the distance between camera and intersection point
+		float dist = -(glm::dot(C, s) + D) / glm::dot(C, u);
+		//float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(s, normals[i]) / (glm::dot(u, normals[i])));
+		ray = s + (dist * u);
+
+		
 
 		//std::cout << "checking if the point is in the triangle" << std::endl;
 		if (PointInTriangle(ray, v1, v2, v3))
@@ -196,11 +222,11 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 			//std::cout << " CONNECTION!!!!!!!       point connects to triangle" << std::endl;
 			//marks the ray as touching the triangle at some point
 			//checks if the contact is the closest contact point
-			if (t < lowestT && t > 0.01f)
+			if (dist < lowestT && dist > 0.01f)
 			{
 				//std::cout << "lower than max" << std::endl;
 				intersect = true;
-				lowestT = t;
+				lowestT = dist;
 				lowestPos = i;
 			}		
 		}
@@ -238,7 +264,7 @@ void RayTraceMain()
 			
 			glBegin(GL_POINTS);
 				glColor3f(color[0],color[1],color[2]);
-				glVertex2i(i, j);
+				glVertex2i(i, WindowHeight-j);
 			glEnd();
 		}
 	}
@@ -267,74 +293,228 @@ void CreateViewPlane()
 	updateViewVector();
 }
 
+float pi = 3.14159;
+
+float n = 8.0f;
+void CreateSphere(float x, float y, float z, float r) {
+	float thetaDif, phiDif;
+	thetaDif = phiDif = 2 * pi / n;
+
+	int numVert = 0;
+
+	for (float phi = 0; phi < 2 * pi; phi += phiDif) {
+		for (float theta = 0; theta < 2 * pi; theta += thetaDif) {
+			float Ax = r * cos(theta) * sin(phi);
+			float Ay = r * sin(theta) * sin(phi);
+			float Az = r * cos(phi);
+
+			float A_x = r * cos(theta) * sin(phi + phiDif);
+			float A_y = r * sin(theta) * sin(phi + phiDif);
+			float A_z = r * cos(phi + phiDif);
+
+			float Bx = r * cos(theta + thetaDif) * sin(phi);
+			float By = r * sin(theta + thetaDif) * sin(phi);
+			float Bz = r * cos(phi);
+
+			float B_x = r * cos(theta + thetaDif) * sin(phi + phiDif);
+			float B_y = r * sin(theta + thetaDif) * sin(phi + phiDif);
+			float B_z = r * cos(phi + phiDif);
+
+			glm::vec4 A(Ax + x, Ay + y, Az + z, 1.0f);
+			glm::vec4 A_(A_x + x, A_y + y, A_z + z, 1.0f);
+			glm::vec4 B(Bx + x, By + y, Bz + z, 1.0f);
+			glm::vec4 B_(B_x + x, B_y + y, B_z + z, 1.0f);
+
+			objectVert.push_back(A[0]);
+			objectVert.push_back(A[1]);
+			objectVert.push_back(A[2]);
+			objectVert.push_back(A[3]);
+
+			objectVert.push_back(A_[0]);
+			objectVert.push_back(A_[1]);
+			objectVert.push_back(A_[2]);
+			objectVert.push_back(A_[3]);
+
+			objectVert.push_back(B[0]);
+			objectVert.push_back(B[1]);
+			objectVert.push_back(B[2]);
+			objectVert.push_back(B[3]);
+
+			objectVert.push_back(B[0]);
+			objectVert.push_back(B[1]);
+			objectVert.push_back(B[2]);
+			objectVert.push_back(B[3]);
+
+			objectVert.push_back(A_[0]);
+			objectVert.push_back(A_[1]);
+			objectVert.push_back(A_[2]);
+			objectVert.push_back(A_[3]);
+
+			objectVert.push_back(B_[0]);
+			objectVert.push_back(B_[1]);
+			objectVert.push_back(B_[2]);
+			objectVert.push_back(B_[3]);
+			numVert += 6;
+		}
+	}
+
+	for (int i = 0; i < numVert; i++) {
+		objectColor.push_back(0.5f);
+		objectColor.push_back(0.5f);
+		objectColor.push_back(1.0f);
+		objectColor.push_back(1.0f);
+	}
+}
+
+
+void CreateCylinder(float x, float y, float z, float r, float height) {
+	float thetaDif = 2 * pi / n;
+	int numVert = 0;
+	//top and bottom
+	for (float theta = 0; theta < 2 * pi; theta += thetaDif) {
+		float Ax = r * cos(theta);
+		float Ay = 0.0f;
+		float Az = r * sin(theta);
+		float A_x = r * cos(theta + thetaDif);
+		float A_y = 0.0f;
+		float A_z = r * sin(theta + thetaDif);
+		//bottom
+		objectVert.push_back(Ax + x);
+		objectVert.push_back(Ay + 0.01f + y);
+		objectVert.push_back(Az + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(A_x + x);
+		objectVert.push_back(A_y + 0.01f + y);
+		objectVert.push_back(A_z + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(0.0f + x);
+		objectVert.push_back(0.01f + y);
+		objectVert.push_back(0.0f + z);
+		objectVert.push_back(1.0f);
+		//top
+		objectVert.push_back(A_x + x);
+		objectVert.push_back(A_y + y + height);
+		objectVert.push_back(A_z + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(Ax + x);
+		objectVert.push_back(Ay + y + height);
+		objectVert.push_back(Az + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(0.0f + x);
+		objectVert.push_back(height + y);
+		objectVert.push_back(0.0f + z);
+		objectVert.push_back(1.0f);
+		//wall
+		objectVert.push_back(A_x + x);
+		objectVert.push_back(A_y + y);
+		objectVert.push_back(A_z + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(Ax + x);
+		objectVert.push_back(Ay + y);
+		objectVert.push_back(Az + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(Ax + x);
+		objectVert.push_back(Ay + height + y);
+		objectVert.push_back(Az + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(Ax + x);
+		objectVert.push_back(Ay + height + y);
+		objectVert.push_back(Az + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(A_x + x);
+		objectVert.push_back(A_y + y + height);
+		objectVert.push_back(A_z + z);
+		objectVert.push_back(1.0f);
+
+		objectVert.push_back(A_x + x);
+		objectVert.push_back(A_y + y);
+		objectVert.push_back(A_z + z);
+		objectVert.push_back(1.0f);
+
+		numVert += 12;
+	}
+
+	for (int i = 0; i < numVert; i++) {
+		objectColor.push_back(0.6f);
+		objectColor.push_back(1.0f);
+		objectColor.push_back(0.6f);
+		objectColor.push_back(1.0f);
+	}
+}
+
 void BuildTestPyramid()
 {
 	//back face
 	objectVert.push_back(0.0f);
-	objectVert.push_back(0.5f);
+	objectVert.push_back(1.0f);
 	objectVert.push_back(-1.0f);
 	objectVert.push_back(1.0f);
 
-	objectVert.push_back(0.0f);
-	objectVert.push_back(-0.5f);
 	objectVert.push_back(-1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(-2.0f);
 	objectVert.push_back(1.0f);
 
 	objectVert.push_back(1.0f);
 	objectVert.push_back(0.0f);
-	objectVert.push_back(-0.5f);
+	objectVert.push_back(-2.0f);
 	objectVert.push_back(1.0f);
 
-	/*
 	//left face
-	objectVert.push_back(1.0f);
-	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	//floor face
-	objectVert.push_back(1.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
 	objectVert.push_back(-1.0f);
 	objectVert.push_back(1.0f);
 
-	//slanted face
+	objectVert.push_back(-1.0f);
 	objectVert.push_back(0.0f);
+	objectVert.push_back(-2.0f);
 	objectVert.push_back(1.0f);
+
+	objectVert.push_back(-1.0f);
+	objectVert.push_back(0.0f);
 	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
 
+	//right face
+	objectVert.push_back(0.0f);
 	objectVert.push_back(1.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
-	objectVert.push_back(1.0f);
-
-	objectVert.push_back(0.0f);
-	objectVert.push_back(0.0f);
 	objectVert.push_back(-1.0f);
 	objectVert.push_back(1.0f);
 
-	*/
+	objectVert.push_back(1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
+
+	objectVert.push_back(1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(-2.0f);
+	objectVert.push_back(1.0f);
+
+	//front face
+	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
+	objectVert.push_back(-1.0f);
+	objectVert.push_back(0.0f);
+
+	objectVert.push_back(-1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
+
+	objectVert.push_back(1.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(0.0f);
+	objectVert.push_back(1.0f);
 	
 	for (int i = 0; i < objectVert.size()/4; i++)
 	{
@@ -469,22 +649,22 @@ void keyboard_func( unsigned char key, int x, int y )
 	{
 		case 'w':
 		{
-			moveCamera(0.0, 0.0, -0.05f);
+			moveCamera(0.0, 0.25f, 0.0);
 			break;
 		}
 		case 's':
 		{
-			moveCamera(0.0, 0.0, 0.05f);
+			moveCamera(0.0, -0.25f, 0.0);
 			break;
 		}
 		case 'a':
 		{
-			moveCamera(-0.05f, 0.0, 0.0);
+			moveCamera(-0.25f, 0.0, 0.0);
 			break;
 		}
 		case 'd':
 		{
-			moveCamera(0.05f, 0.0, 0.0);
+			moveCamera(0.25f, 0.0, 0.0);
 			break;
 		}
 		case '1':
@@ -654,12 +834,14 @@ void init( void )
 	//
 	std::cout << "starting view plane" << std::endl;
 	CreateViewPlane();
-	std::cout << "building test pyramid" << std::endl;
-	BuildTestPyramid();
-	std::cout << "finished test pyramid" << std::endl;
+	std::cout << "building shapes" << std::endl;
+	CreateSphere(0, 0, -2.0f, 1.0f);
+	CreateCylinder(5.0f, 0, -2.0f, 0.5f, 1.0f);
+	//BuildTestPyramid();
+	std::cout << "finished scene" << std::endl;
 	createNormals();
 	
-	lightSource = glm::vec3(0.0, 3.0, -2.0);
+	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
 
 	std::cout << "Finished initializing...\n\n";
 }
