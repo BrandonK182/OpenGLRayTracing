@@ -89,6 +89,8 @@ glm::vec3 Is(1.0f, 1.0f, 1.0f);
 //ka & kd are vert color
 glm::vec3 ks(1.0f, 1.0f, 1.0f);
 
+int maxDepth = 3;
+
 /*=================================================================================================
 	HELPER FUNCTIONS
 =================================================================================================*/
@@ -196,6 +198,7 @@ bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
 }
 
 glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
+
 	//ray in point s in direction u
 	bool intersect = false;
 	float lowestT = maxDistance;
@@ -250,6 +253,8 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	ray = s + (lowestT * u);
 	glm::vec3 pixColor = glm::vec3(objectColor[lowestPos * 12], objectColor[lowestPos * 12 + 1], objectColor[lowestPos * 12 + 2]);
 
+	if (depth == maxDepth)
+		return pixColor;
 
 	if (checkLight(ray, lightSource, normals[lowestPos]))
 	{
@@ -262,6 +267,9 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 		glm::vec3 v = s - ray;
 		v = glm::normalize(v);
 		glm::vec3 I = (Ia*pixColor) + (Id * pixColor * (glm::dot(lightray, lowNormal))) + (Is*ks*glm::dot(v,r));
+
+		float reflectivity = 0.33f;
+		I = I + reflectivity * RayTrace(ray, r, depth + 1);
 		return I;
 	}
 		
@@ -386,6 +394,8 @@ void CreateSphere(float x, float y, float z, float r) {
 		objectColor.push_back(1.0f);
 	}
 }
+
+
 
 
 void CreateCylinder(float x, float y, float z, float r, float height) {
@@ -544,6 +554,216 @@ void BuildTestPyramid()
 		objectColor.push_back(0.0f);
 		objectColor.push_back(1.0f);
 	}
+}
+
+void CreateCeiling(float x, float y, float z, float width, float length) {
+	glm::vec4 lowerLeft(-width / 2 + x, y + 0.0f, -length / 2 + z, 1.0f);
+	glm::vec4 lowerRight(width / 2 + x, y + 0.0f, -length / 2 + z, 1.0f);
+	glm::vec4 topLeft(-width / 2 + x, y + 0.0f, length / 2 + z, 1.0f);
+	glm::vec4 topRight(width / 2 + x, y + 0.0f, length / 2 + z, 1.0f);
+
+	//floor
+	objectVert.push_back(lowerLeft[0]);
+	objectVert.push_back(lowerLeft[1]);
+	objectVert.push_back(lowerLeft[2]);
+	objectVert.push_back(lowerLeft[3]);
+
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+
+	objectVert.push_back(topRight[0]);
+	objectVert.push_back(topRight[1]);
+	objectVert.push_back(topRight[2]);
+	objectVert.push_back(topRight[3]);
+
+	for (int i = 0; i < 6 * 4; i++)
+	{
+		objectColor.push_back(1.0f);
+	}
+}
+
+void CreateFloor(float x, float y, float z, float width, float length) {
+	//floor
+	glm::vec4 lowerLeftH(-width / 2 + x, y, -length / 2 + z, 1.0f);
+	glm::vec4 lowerRightH(width / 2 + x, y, -length / 2 + z, 1.0f);
+	glm::vec4 topLeftH(-width / 2 + x, y, length / 2 + z, 1.0f);
+	glm::vec4 topRightH(width / 2 + x, y, length / 2 + z, 1.0f);
+
+	//ceiling
+	objectVert.push_back(lowerLeftH[0]);
+	objectVert.push_back(lowerLeftH[1]);
+	objectVert.push_back(lowerLeftH[2]);
+	objectVert.push_back(lowerLeftH[3]);
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
+	objectVert.push_back(topRightH[0]);
+	objectVert.push_back(topRightH[1]);
+	objectVert.push_back(topRightH[2]);
+	objectVert.push_back(topRightH[3]);
+
+	for (int i = 0; i < 6 * 4; i++)
+	{
+		objectColor.push_back(1.0f);
+	}
+}
+
+// inX false = z axis  
+void CreateWall(float x, float y, float z, float length, float height, bool inXaxis, float isNegative) {
+	//floor
+	glm::vec4 lowerLeft;
+	glm::vec4 lowerRight;
+	glm::vec4 topLeft;
+	glm::vec4 topRight;
+
+	if (!inXaxis)
+	{
+		lowerLeft = glm::vec4(-length / 2 + x, -height / 2 + y, z, 1.0f);
+		lowerRight = glm::vec4(length / 2 + x, -height / 2 + y, z, 1.0f);
+		topLeft = glm::vec4(-length / 2 + x, height / 2 + y, z, 1.0f);
+		topRight = glm::vec4(length / 2 + x, height / 2 + y, z, 1.0f);
+	}
+	else
+	{
+		lowerLeft = glm::vec4(x, -height / 2 + y, length / 2 + z, 1.0f);
+		lowerRight = glm::vec4(x, -height / 2 + y, -length / 2 + z, 1.0f);
+		topLeft = glm::vec4(x, height / 2 + y, length / 2 + z, 1.0f);
+		topRight = glm::vec4(x, height / 2 + y, -length / 2 + z, 1.0f);
+	}
+
+	if (isNegative)
+	{
+		objectVert.push_back(lowerLeft[0]);
+		objectVert.push_back(lowerLeft[1]);
+		objectVert.push_back(lowerLeft[2]);
+		objectVert.push_back(lowerLeft[3]);
+		objectVert.push_back(topLeft[0]);
+		objectVert.push_back(topLeft[1]);
+		objectVert.push_back(topLeft[2]);
+		objectVert.push_back(topLeft[3]);
+		objectVert.push_back(lowerRight[0]);
+		objectVert.push_back(lowerRight[1]);
+		objectVert.push_back(lowerRight[2]);
+		objectVert.push_back(lowerRight[3]);
+		objectVert.push_back(lowerRight[0]);
+		objectVert.push_back(lowerRight[1]);
+		objectVert.push_back(lowerRight[2]);
+		objectVert.push_back(lowerRight[3]);
+		objectVert.push_back(topLeft[0]);
+		objectVert.push_back(topLeft[1]);
+		objectVert.push_back(topLeft[2]);
+		objectVert.push_back(topLeft[3]);
+		objectVert.push_back(topRight[0]);
+		objectVert.push_back(topRight[1]);
+		objectVert.push_back(topRight[2]);
+		objectVert.push_back(topRight[3]);
+	}
+	else
+	{
+		objectVert.push_back(lowerLeft[0]);
+		objectVert.push_back(lowerLeft[1]);
+		objectVert.push_back(lowerLeft[2]);
+		objectVert.push_back(lowerLeft[3]);
+		objectVert.push_back(lowerRight[0]);
+		objectVert.push_back(lowerRight[1]);
+		objectVert.push_back(lowerRight[2]);
+		objectVert.push_back(lowerRight[3]);
+		objectVert.push_back(topLeft[0]);
+		objectVert.push_back(topLeft[1]);
+		objectVert.push_back(topLeft[2]);
+		objectVert.push_back(topLeft[3]);
+		objectVert.push_back(topLeft[0]);
+		objectVert.push_back(topLeft[1]);
+		objectVert.push_back(topLeft[2]);
+		objectVert.push_back(topLeft[3]);
+		objectVert.push_back(lowerRight[0]);
+		objectVert.push_back(lowerRight[1]);
+		objectVert.push_back(lowerRight[2]);
+		objectVert.push_back(lowerRight[3]);
+		objectVert.push_back(topRight[0]);
+		objectVert.push_back(topRight[1]);
+		objectVert.push_back(topRight[2]);
+		objectVert.push_back(topRight[3]);
+	}
+
+	for (int i = 0; i < 6 * 4; i++)
+	{
+		objectColor.push_back(1.0f);
+	}
+}
+
+void CreateCuboid(float x, float y, float z, float width, float length, float height) {
+	glm::vec4 lowerLeft(-width / 2 + x, y + 0.0f, -length / 2 + z, 1.0f);
+	glm::vec4 lowerRight(width / 2 + x, y + 0.0f, -length / 2 + z, 1.0f);
+	glm::vec4 topLeft(-width / 2 + x, y + 0.0f, length / 2 + z, 1.0f);
+	glm::vec4 topRight(width / 2 + x, y + 0.0f, length / 2 + z, 1.0f);
+	glm::vec4 lowerLeftH(-width / 2 + x, y + height, -length / 2 + z, 1.0f);
+	glm::vec4 lowerRightH(width / 2 + x, y + height, -length / 2 + z, 1.0f);
+	glm::vec4 topLeftH(-width / 2 + x, y + height, length / 2 + z, 1.0f);
+	glm::vec4 topRightH(width / 2 + x, y + height, length / 2 + z, 1.0f);
+
+	CreateFloor(x, y, z, width, length);
+	CreateCeiling(x, y + height, z, width, length);
+	/*
+	//wall(1)
+	objectVert.push_back(lowerLeft);
+	objectVert.push_back(lowerLeftH);
+	objectVert.push_back(lowerRight);
+	objectVert.push_back(lowerRight);
+	objectVert.push_back(lowerLeftH);
+	objectVert.push_back(lowerRightH);
+	//wall(2)
+	objectVert.push_back(lowerRight);
+	objectVert.push_back(lowerRightH);
+	objectVert.push_back(topRight);
+	objectVert.push_back(topRight);
+	objectVert.push_back(lowerRightH);
+	objectVert.push_back(topRightH);
+	//wall(3)
+	objectVert.push_back(topRight);
+	objectVert.push_back(topRightH);
+	objectVert.push_back(topLeft);
+	objectVert.push_back(topLeft);
+	objectVert.push_back(topRightH);
+	objectVert.push_back(topLeftH);
+	//wall(4)
+	objectVert.push_back(topLeft);
+	objectVert.push_back(topLeftH);
+	objectVert.push_back(lowerLeft);
+	objectVert.push_back(lowerLeft);
+	objectVert.push_back(topLeftH);
+	objectVert.push_back(lowerLeftH);
+	*/
 }
 
 void createNormals()
@@ -856,12 +1076,22 @@ void init( void )
 	std::cout << "starting view plane" << std::endl;
 	CreateViewPlane();
 	std::cout << "building shapes" << std::endl;
-	CreateSphere(0, 0, -2.0f, 1.0f);
-	CreateCylinder(5.0f, 0, -2.0f, 0.5f, 1.0f);
+	CreateSphere(-1.0f, -1.0f, -5.0f, 1.0f);
+	CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
+
+	CreateCeiling(0, 5, -5, 10.0f, 10.0f);
+	CreateFloor(0, -5, -5, 10.0f, 10.0f);
+
+	CreateWall(0, 0, -10, 10.0f, 10.0f, false, false);
+	CreateWall(-5, 0, -5, 10.0f, 10.0f, true, false);
+	CreateWall(5, 0, -5, 10.0f, 10.0f, true, true);
+
+
 	//BuildTestPyramid();
 	std::cout << "finished scene" << std::endl;
 	createNormals();
 	
+
 	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
 
 	std::cout << "Finished initializing...\n\n";
