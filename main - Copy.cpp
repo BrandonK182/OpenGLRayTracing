@@ -84,7 +84,7 @@ glm::vec3 lightSource;
 
 glm::vec3 Ia(0.5f, 0.5f, 0.5f);
 glm::vec3 Id(0.7f, 0.7f, 0.7f);
-glm::vec3 Is(1.0f, 1.0f, 1.0f);
+glm::vec3 Is(0.8f, 0.8f, 0.8f);
 
 //ka & kd are vert color
 glm::vec3 ks(1.0f, 1.0f, 1.0f);
@@ -149,10 +149,10 @@ bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
 	glm::vec3 vector = light - point;
 
 	//check if the light is the opposite direction to the triangle face
-	if (glm::dot(vector, normal) < 0)
-	{
-		return false;
-	}
+	//if (glm::dot(vector, normal) < 0)
+	//{
+		//return false;
+	//}
 		
 	vector = glm::normalize(vector);
 	float lowestT = maxDistance;
@@ -593,7 +593,7 @@ void CreateCeiling(float x, float y, float z, float width, float length) {
 	objectVert.push_back(topRight[2]);
 	objectVert.push_back(topRight[3]);
 
-	for (int i = 0; i < 6 * 4; i++)
+	for (int i = 0; i < 6*4; i++)
 	{
 		objectColor.push_back(1.0f);
 	}
@@ -732,38 +732,175 @@ void CreateCuboid(float x, float y, float z, float width, float length, float he
 	glm::vec4 topLeftH(-width / 2 + x, y + height, length / 2 + z, 1.0f);
 	glm::vec4 topRightH(width / 2 + x, y + height, length / 2 + z, 1.0f);
 
-	CreateFloor(x, y, z, width, length);
-	CreateCeiling(x, y + height, z, width, length);
-	/*
+	int numVert = 0;
+
+	//floor
+	objectVert.push_back(lowerLeft[0]);
+	objectVert.push_back(lowerLeft[1]);
+	objectVert.push_back(lowerLeft[2]);
+	objectVert.push_back(lowerLeft[3]);
+
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+
+	objectVert.push_back(topRight[0]);
+	objectVert.push_back(topRight[1]);
+	objectVert.push_back(topRight[2]);
+	objectVert.push_back(topRight[3]);
+	//ceiling
+	objectVert.push_back(lowerLeftH[0]);
+	objectVert.push_back(lowerLeftH[1]);
+	objectVert.push_back(lowerLeftH[2]);
+	objectVert.push_back(lowerLeftH[3]);
+
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
+
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
+
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
+
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
+
+	objectVert.push_back(topRightH[0]);
+	objectVert.push_back(topRightH[1]);
+	objectVert.push_back(topRightH[2]);
+	objectVert.push_back(topRightH[3]);
 	//wall(1)
-	objectVert.push_back(lowerLeft);
-	objectVert.push_back(lowerLeftH);
-	objectVert.push_back(lowerRight);
-	objectVert.push_back(lowerRight);
-	objectVert.push_back(lowerLeftH);
-	objectVert.push_back(lowerRightH);
+	objectVert.push_back(lowerLeft[0]);
+	objectVert.push_back(lowerLeft[1]);
+	objectVert.push_back(lowerLeft[2]);
+	objectVert.push_back(lowerLeft[3]);
+
+	objectVert.push_back(lowerLeftH[0]);
+	objectVert.push_back(lowerLeftH[1]);
+	objectVert.push_back(lowerLeftH[2]);
+	objectVert.push_back(lowerLeftH[3]);
+
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+	objectVert.push_back(lowerLeftH[0]);
+	objectVert.push_back(lowerLeftH[1]);
+	objectVert.push_back(lowerLeftH[2]);
+	objectVert.push_back(lowerLeftH[3]);
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
 	//wall(2)
-	objectVert.push_back(lowerRight);
-	objectVert.push_back(lowerRightH);
-	objectVert.push_back(topRight);
-	objectVert.push_back(topRight);
-	objectVert.push_back(lowerRightH);
-	objectVert.push_back(topRightH);
+	objectVert.push_back(lowerRight[0]);
+	objectVert.push_back(lowerRight[1]);
+	objectVert.push_back(lowerRight[2]);
+	objectVert.push_back(lowerRight[3]);
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
+	objectVert.push_back(topRight[0]);
+	objectVert.push_back(topRight[1]);
+	objectVert.push_back(topRight[2]);
+	objectVert.push_back(topRight[3]);
+	objectVert.push_back(topRight[0]);
+	objectVert.push_back(topRight[1]);
+	objectVert.push_back(topRight[2]);
+	objectVert.push_back(topRight[3]);
+	objectVert.push_back(lowerRightH[0]);
+	objectVert.push_back(lowerRightH[1]);
+	objectVert.push_back(lowerRightH[2]);
+	objectVert.push_back(lowerRightH[3]);
+	objectVert.push_back(topRightH[0]);
+	objectVert.push_back(topRightH[1]);
+	objectVert.push_back(topRightH[2]);
+	objectVert.push_back(topRightH[3]);
 	//wall(3)
-	objectVert.push_back(topRight);
-	objectVert.push_back(topRightH);
-	objectVert.push_back(topLeft);
-	objectVert.push_back(topLeft);
-	objectVert.push_back(topRightH);
-	objectVert.push_back(topLeftH);
+	objectVert.push_back(topRight[0]);
+	objectVert.push_back(topRight[1]);
+	objectVert.push_back(topRight[2]);
+	objectVert.push_back(topRight[3]);
+	objectVert.push_back(topRightH[0]);
+	objectVert.push_back(topRightH[1]);
+	objectVert.push_back(topRightH[2]);
+	objectVert.push_back(topRightH[3]);
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+	objectVert.push_back(topRightH[0]);
+	objectVert.push_back(topRightH[1]);
+	objectVert.push_back(topRightH[2]);
+	objectVert.push_back(topRightH[3]);
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
 	//wall(4)
-	objectVert.push_back(topLeft);
-	objectVert.push_back(topLeftH);
-	objectVert.push_back(lowerLeft);
-	objectVert.push_back(lowerLeft);
-	objectVert.push_back(topLeftH);
-	objectVert.push_back(lowerLeftH);
-	*/
+	objectVert.push_back(topLeft[0]);
+	objectVert.push_back(topLeft[1]);
+	objectVert.push_back(topLeft[2]);
+	objectVert.push_back(topLeft[3]);
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
+	objectVert.push_back(lowerLeft[0]);
+	objectVert.push_back(lowerLeft[1]);
+	objectVert.push_back(lowerLeft[2]);
+	objectVert.push_back(lowerLeft[3]);
+	objectVert.push_back(topLeftH[0]);
+	objectVert.push_back(topLeftH[1]);
+	objectVert.push_back(topLeftH[2]);
+	objectVert.push_back(topLeftH[3]);
+	objectVert.push_back(lowerLeftH[0]);
+	objectVert.push_back(lowerLeftH[1]);
+	objectVert.push_back(lowerLeftH[2]);
+	objectVert.push_back(lowerLeftH[3]);
+
+	numVert = 6 * 6;
+	for (int i = 0; i < numVert; i++)
+	{
+		objectColor.push_back(0.25f);
+		objectColor.push_back(0.25f);
+		objectColor.push_back(0.8f);
+		objectColor.push_back(1.0f);
+	}
 }
 
 void createNormals()
@@ -1076,21 +1213,26 @@ void init( void )
 	std::cout << "starting view plane" << std::endl;
 	CreateViewPlane();
 	std::cout << "building shapes" << std::endl;
-	CreateSphere(-1.0f, -1.0f, -5.0f, 1.0f);
+	//CreateSphere(-1.0f, -1.0f, -5.0f, 1.0f);
+	//CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
+	
+	//CreateCeiling(0, 5, -5, 10.1f, 10.1f);
+	//CreateFloor(0, -5, -5, 10.0f, 10.0f);
+	//CreateWall(0, 0, -10, 10.0f, 10.0f, false, false);
+	//CreateWall(-5, 0, -5, 10.0f, 10.0f, true, false);
+	//CreateWall(5, 0, -5, 10.0f, 10.0f, true, true);
+
+	CreateCylinder(-1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
 	CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
 
-	CreateCeiling(0, 5, -5, 10.0f, 10.0f);
-	CreateFloor(0, -5, -5, 10.0f, 10.0f);
 
-	CreateWall(0, 0, -10, 10.0f, 10.0f, false, false);
-	CreateWall(-5, 0, -5, 10.0f, 10.0f, true, false);
-	CreateWall(5, 0, -5, 10.0f, 10.0f, true, true);
-
-
+	CreateCuboid(0,-2,-2,0.25f,5.0f, 4.0f);
 	//BuildTestPyramid();
 	std::cout << "finished scene" << std::endl;
 	createNormals();
 	
+
+	//lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
 
 	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
 
