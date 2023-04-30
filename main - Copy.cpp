@@ -884,6 +884,10 @@ void CreateCuboid(float x, float y, float z, float width, float length, float he
 	objectVert.push_back(lowerLeft[1]);
 	objectVert.push_back(lowerLeft[2]);
 	objectVert.push_back(lowerLeft[3]);
+	objectVert.push_back(lowerLeft[0]);
+	objectVert.push_back(lowerLeft[1]);
+	objectVert.push_back(lowerLeft[2]);
+	objectVert.push_back(lowerLeft[3]);
 	objectVert.push_back(topLeftH[0]);
 	objectVert.push_back(topLeftH[1]);
 	objectVert.push_back(topLeftH[2]);
