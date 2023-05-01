@@ -491,9 +491,10 @@ void CreateTriangle() {
 }
 
 void CreatePlane(void) {
-	glm::vec3 cameraPos(0.0f, 3.0f, 3.0f);
+	glm::vec3 cameraPos(eyePos.x,eyePos.y,eyePos.z);
 	//vector of the plane
-	glm::vec3 normalv1(1.0f, 0.0f, 0.0f);
+	glm::vec3 randomPoint(1.0f, 0.0f, 0.0f);
+	glm::vec3 normalv1(glm::normalize(glm::cross(cameraPos, randomPoint)); 
 	glm::vec3 normalv2(glm::normalize(glm::cross(cameraPos, normalv1)));
 
 	//get center plane 
@@ -524,7 +525,7 @@ void CreatePlane(void) {
 		planePos.y += yzDif;
 		planePos.z -= yzDif;
 	}
-	RayTraceMain();
+	//RayTraceMain();
 
 	glGenVertexArrays(1, &plane_VAO);
 	glBindVertexArray(plane_VAO);
@@ -693,6 +694,10 @@ void active_motion_func( int x, int y )
 	{
 		perspRotationY += ( x - LastMousePosX ) * perspSensitivity;
 		perspRotationX += ( y - LastMousePosY ) * perspSensitivity;
+
+		/*eyepos.x = perspRotationX;
+		eyepos.y = perspRotationY;
+		CreatePlane();*/
 	}
 
 	LastMousePosX = x;
