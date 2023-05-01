@@ -256,24 +256,26 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	if (depth == maxDepth)
 		return pixColor;
 
-	if (checkLight(ray, lightSource, normals[lowestPos]))
+	glm::vec3 I;
+	glm::vec3 lightray = lightSource - ray;
+	lightray = glm::normalize(lightray);
+	glm::vec3 lowNormal = normals[lowestPos];
+	lowNormal = glm::normalize(lowNormal);
+	glm::vec3 r = u - ((2 * glm::dot(u, lowNormal) * lowNormal));
+	r = glm::normalize(r);
+	glm::vec3 v = s - ray;
+	v = glm::normalize(v);
+	if (!checkLight(ray, lightSource, normals[lowestPos]))
 	{
-		glm::vec3 lightray = lightSource - ray;
-		lightray = glm::normalize(lightray);
-		glm::vec3 lowNormal = normals[lowestPos];
-		lowNormal = glm::normalize(lowNormal);
-		glm::vec3 r = ((2 * glm::dot(lightray, lowNormal) * lowNormal) - lightray);
-		r = glm::normalize(r);
-		glm::vec3 v = s - ray;
-		v = glm::normalize(v);
-		glm::vec3 I = (Ia*pixColor) + (Id * pixColor * (glm::dot(lightray, lowNormal))) + (Is*ks*glm::dot(v,r));
-
-		float reflectivity = 0.33f;
-		I = I + reflectivity * RayTrace(ray, r, depth + 1);
+		I = pixColor * 0.05f;
 		return I;
 	}
-		
-	return pixColor*0.5f;
+	I = (Ia*pixColor) + (Id * pixColor * (glm::dot(lightray, lowNormal))) + (Is*ks*glm::dot(v,r));
+	
+
+	float reflectivity = 0.33f;
+	I = I + reflectivity * RayTrace(ray, r, depth + 1);
+	return I;
 	//return the color of of of the verticies on the triangle with the lowest distance
 	//change later
 	//return glm::vec3(objectColor[lowestPos*12], objectColor[lowestPos * 12], objectColor[lowestPos * 12]);
@@ -324,7 +326,7 @@ void CreateViewPlane()
 
 float pi = 3.14159;
 
-float n = 8.0f;
+float n = 20.0f;
 void CreateSphere(float x, float y, float z, float r) {
 	float thetaDif, phiDif;
 	thetaDif = phiDif = 2 * pi / n;
@@ -395,7 +397,57 @@ void CreateSphere(float x, float y, float z, float r) {
 	}
 }
 
+void CreateCone(float x, float y, float z, float r, float height) {
+	float thetaDif = 2 * pi / n;
+	for (float theta = 0; theta < 2 * pi; theta += thetaDif) {
+		float Ax = r * cos(theta);
+		float Ay = 0.0f;
+		float Az = r * sin(theta);
+		float A_x = r * cos(theta + thetaDif);
+		float A_y = 0.0f;
+		float A_z = r * sin(theta + thetaDif);
 
+		glm::vec4 A(Ax + x, Ay + 0.01f + y, Az + z, 1.0f);
+		glm::vec4 A_(A_x + x, A_y + 0.01f + y, A_z + z, 1.0f);
+		//bottom
+		objectVert.push_back(A[0]);
+		objectVert.push_back(A[1]);
+		objectVert.push_back(A[2]);
+		objectVert.push_back(A[3]);
+		objectVert.push_back(A_[0]);
+		objectVert.push_back(A_[1]);
+		objectVert.push_back(A_[2]);
+		objectVert.push_back(A_[3]);
+		objectVert.push_back(x);
+		objectVert.push_back(0.01f + y);
+		objectVert.push_back(z);
+		objectVert.push_back(1.0f);
+
+		glm::vec4 topCenter(0.0f + x, height + y, 0.0f + z, 1.0f);
+		//wall
+		objectVert.push_back(A_[0]);
+		objectVert.push_back(A_[1]);
+		objectVert.push_back(A_[2]);
+		objectVert.push_back(A_[3]);
+		objectVert.push_back(A[0]);
+		objectVert.push_back(A[1]);
+		objectVert.push_back(A[2]);
+		objectVert.push_back(A[3]);
+		objectVert.push_back(topCenter[0]);
+		objectVert.push_back(topCenter[1]);
+		objectVert.push_back(topCenter[2]);
+		objectVert.push_back(topCenter[3]);
+
+
+		for (int i = 0; i < 6; i++)
+		{
+			objectColor.push_back(0.7f);
+			objectColor.push_back(0.25f);
+			objectColor.push_back(0.2f);
+			objectColor.push_back(1.0f);
+		}
+	}
+}
 
 
 void CreateCylinder(float x, float y, float z, float r, float height) {
@@ -900,8 +952,8 @@ void CreateCuboid(float x, float y, float z, float width, float length, float he
 	numVert = 6 * 6;
 	for (int i = 0; i < numVert; i++)
 	{
-		objectColor.push_back(0.25f);
-		objectColor.push_back(0.25f);
+		objectColor.push_back(0.8f);
+		objectColor.push_back(0.8f);
 		objectColor.push_back(0.8f);
 		objectColor.push_back(1.0f);
 	}
@@ -1183,6 +1235,24 @@ void display_func( void )
 	
 }
 
+void CreateScene1()
+{
+	CreateCone(0, 0, -1, 0.5f, 0.5f);
+	CreateCylinder(1.5, 0, -1.5, 0.5, 1);
+	CreateCuboid(0, -0.25f, -2, 10, 10, 0.25);
+
+	lightSource = glm::vec3(0.0f, 1.5f, -1.0f);
+}
+
+void CreateScene2()
+{
+	CreateCylinder(-1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
+	CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
+	CreateCuboid(0, -2, -2, 0.25f, 5.0f, 4.0f);
+
+	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
+}
+
 /*=================================================================================================
 	INIT
 =================================================================================================*/
@@ -1217,28 +1287,9 @@ void init( void )
 	std::cout << "starting view plane" << std::endl;
 	CreateViewPlane();
 	std::cout << "building shapes" << std::endl;
-	//CreateSphere(-1.0f, -1.0f, -5.0f, 1.0f);
-	//CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
-	
-	//CreateCeiling(0, 5, -5, 10.1f, 10.1f);
-	//CreateFloor(0, -5, -5, 10.0f, 10.0f);
-	//CreateWall(0, 0, -10, 10.0f, 10.0f, false, false);
-	//CreateWall(-5, 0, -5, 10.0f, 10.0f, true, false);
-	//CreateWall(5, 0, -5, 10.0f, 10.0f, true, true);
-
-	CreateCylinder(-1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
-	CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
-
-
-	CreateCuboid(0,-2,-2,0.25f,5.0f, 4.0f);
-	//BuildTestPyramid();
+	CreateScene1();
 	std::cout << "finished scene" << std::endl;
 	createNormals();
-	
-
-	//lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
-
-	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
 
 	std::cout << "Finished initializing...\n\n";
 }
