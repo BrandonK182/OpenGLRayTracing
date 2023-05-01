@@ -256,22 +256,27 @@ glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int depth) {
 	if (depth == maxDepth)
 		return pixColor;
 
-	glm::vec3 I;
-	glm::vec3 lightray = lightSource - ray;
-	lightray = glm::normalize(lightray);
+	if (checkLight(ray, lightSource, normals[lowestPos]))
+	{
+		glm::vec3 lightray = lightSource - ray;
+		lightray = glm::normalize(lightray);
+		glm::vec3 lowNormal = normals[lowestPos];
+		lowNormal = glm::normalize(lowNormal);
+		glm::vec3 r = u - ((2 * glm::dot(u, lowNormal) * lowNormal));
+		r = glm::normalize(r);
+		glm::vec3 v = s - ray;
+		v = glm::normalize(v);
+		glm::vec3 I = (Ia*pixColor) + (Id * pixColor * (glm::dot(lightray, lowNormal))) + (Is*ks*glm::dot(v,r));
+
+		float reflectivity = 0.33f;
+		I = I + reflectivity * RayTrace(ray, r, depth + 1);
+		return I;
+	}
 	glm::vec3 lowNormal = normals[lowestPos];
 	lowNormal = glm::normalize(lowNormal);
 	glm::vec3 r = u - ((2 * glm::dot(u, lowNormal) * lowNormal));
 	r = glm::normalize(r);
-	glm::vec3 v = s - ray;
-	v = glm::normalize(v);
-	if (!checkLight(ray, lightSource, normals[lowestPos]))
-	{
-		I = pixColor * 0.05f;
-		return I;
-	}
-	I = (Ia*pixColor) + (Id * pixColor * (glm::dot(lightray, lowNormal))) + (Is*ks*glm::dot(v,r));
-	
+	glm::vec3 I{ 0.01f,0.01f,0.01f };
 
 	float reflectivity = 0.33f;
 	I = I + reflectivity * RayTrace(ray, r, depth + 1);
@@ -1237,6 +1242,15 @@ void display_func( void )
 
 void CreateScene1()
 {
+	CreateCylinder(-1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
+	CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
+	CreateCuboid(0, -2, -3, 0.25f, 5.0f, 4.0f);
+
+	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
+}
+
+void CreateScene2()
+{
 	CreateCone(0, 0, -1, 0.5f, 0.5f);
 	CreateCylinder(1.5, 0, -1.5, 0.5, 1);
 	CreateCuboid(0, -0.25f, -2, 10, 10, 0.25);
@@ -1244,14 +1258,6 @@ void CreateScene1()
 	lightSource = glm::vec3(0.0f, 1.5f, -1.0f);
 }
 
-void CreateScene2()
-{
-	CreateCylinder(-1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
-	CreateCylinder(1.0f, -1.0f, -5.0f, 0.5f, 1.0f);
-	CreateCuboid(0, -2, -2, 0.25f, 5.0f, 4.0f);
-
-	lightSource = glm::vec3(3.0f, 3.0f, -1.0f);
-}
 
 /*=================================================================================================
 	INIT
