@@ -8,6 +8,7 @@
 #include "shaderprogram.h"
 
 #include <vector>
+#include <limits>
 #include "Shape.h"
  
 /*=================================================================================================
@@ -32,6 +33,8 @@ bool mouse_states[8];
 // Other parameters
 bool draw_wireframe = false;
 
+float maxDistance = 100;
+int maxDepth = 3;
 
 /*=================================================================================================
 	SHADERS & TRANSFORMATIONS
@@ -80,6 +83,10 @@ float axis_colors[] = {
 	0.0f, 0.0f, 1.0f, 1.0f,//blue
 	0.0f, 0.0f, 1.0f, 1.0f
 };
+glm::vec4 lightSource;
+
+
+
 
 //sphere
 GLuint sphere_VAO;
@@ -131,6 +138,7 @@ GLuint plane_VBO[2];
 std::vector<glm::vec4> plane_vertices;
 std::vector<glm::vec4> plane_colors;
 
+std::vector<glm::vec4> vertices_all;
 
 /*=================================================================================================
 	HELPER FUNCTIONS
@@ -177,107 +185,201 @@ void CreateTransformationMatrices( void )
 	PerspModelMatrix = glm::scale( PerspModelMatrix, glm::vec3( perspZoom ) );
 }
 
-//RAY TRACING
-//struct ViewP {
-//	float x;
-//	float y;
-//	float z;
-//	glm::vec3 v1;
-//	glm::vec3 v2;
-//
-//	ViewP() {
-//		//camera vector
-//		glm::vec3 v0(eyePos.x, eyePos.y, eyePos.z);
-//		std::cout << v0.x << " " << v0.y << " " << v0.z << std::endl;
-//
-//		//perpenducular vector to the direction vector --> x direction
-//		v1 = glm::vec3(-1.0f, 0.0f, 0.0f);
-//		std::cout << v1.x << " " << v1.y << " " << v1.z << std::endl;
-//
-//
-//		//cross product of direction vector and perpendicular vector 
-//		v2 = glm::vec3(glm::normalize(cross(v1, v0)));
-//		std::cout << v2.x << " " << v2.y << " " << v2.z << std::endl;
-//		
-//		//distance of camera and plane
-//		x = eyePos.x -1.0f + v1.x;
-//		y = eyePos.y -1.0f - v1.y - v2.y;
-//		z = eyePos.z -1.0f - v1.z - v2.z;
-//		std::cout << x << " " << y << " " << z << std::endl;
-//
-//
-//	}
-//
-//};
-
 //scalar multiply vec3
 glm::vec3 operator*(float scalar, const glm::vec3& v) {
 	return glm::vec3(scalar * v.x, scalar * v.y, scalar * v.z);
 }
+bool SameSide(glm::vec3 p1, glm::vec3 p2, glm::vec3 a, glm::vec3 b)
+{
+	glm::vec3 cp1 = glm::cross(b - a, p1 - a);
+	glm::vec3 cp2 = glm::cross(b - a, p2 - a);
+	return glm::dot(cp1, cp2) >= 0;
+}
 
-glm::vec3 RayTrace(glm::vec3 s, glm::vec3 u, int maxDepth) {
-	//s is the starting postion of the ray
-	//u is the unit vector in the direction of the ray
-	//depth is the trace depth
-	//return value is a 3 tuple of color vlaue(R,G,B);
+bool PointInTriangle(glm::vec3 p, glm::vec3 vert1, glm::vec3 vert2, glm::vec3 vert3)
+{
+	return SameSide(p, vert1, vert2, vert3) && SameSide(p, vert2, vert1, vert3) && SameSide(p, vert3, vert1, vert2);
+}
+bool rayTriangleIntersect(glm::vec3 &orig, glm::vec3 &dir, glm::vec3 &v0, glm::vec3 &v1, glm::vec3 &v2, float &t,float &u, float &v) {
+	//compute the plane that the triangle lies on's normal
+	glm::vec3 A(v1 - v0);
+	glm::vec3 B(v2 - v0);
+	glm::vec3 pvec(glm::cross(dir, B));
+	float det = glm::dot(A,pvec);
 
-	// Part 1:: nonrecursive computations
 
+	//if the determinant is negative, triangle is back facing
+	//if determinant is clsoe to 0, the ray misses the triangle
+	if (det < DBL_MIN) { return false; };
+
+	//ray and triangle are parallel if det is close to 0
+	if (abs(det) < DBL_MIN) { return false; };
+
+	float invDet = 1 / det;
+	glm::vec3 tvec = orig - v0;
+	u = glm::dot(tvec, pvec) * invDet;
+	if (u < 0 || u > 1) { return false; };
+
+	glm::vec3 qvec(glm::cross(tvec, A));
+	v = glm::dot(dir, qvec) * invDet;
+	if (v < 0 || u + v > 1) { return false; };
+
+	t = glm::dot(B, qvec) * invDet;
+
+	return true;
+}
+
+bool intersect(glm::vec3 &orig,glm::vec3 &dir, float& tNear, int  &triIndex, glm::vec2& uv) {
+	int j = 0;
 	bool intersection = false;
-	glm::vec3 triangle_color(1.0f, 0.0f, 0.0f);
-	glm::vec3 background_color(0.0f,0.0f,0.0f);
-
-	int depth = maxDepth;
-	float p_rg = 1.0f;
-	float p_tg = 1.0f;
-	for (float t = 0.0f; t <= 10.0f; t+= 0.1f) {
-		//r is a vector that goes from the center to the unit vector starting at the camera at t
-		//r equation : s = starting point of ray at camera
-		//				 u = direction vector of the ray
-		//				 t = parameter
-		glm::vec3 r = (t * u) + s;
-		//CreateSphere(r.x, r.y, r.z, 0.1f);
-		//normal vector of triangle
-		glm::vec3 v0(triangle_vertices[0]);
-		glm::vec3 v1(triangle_vertices[1]);
-		glm::vec3 v2(triangle_vertices[2]);
-
-		glm::vec3 A(v1 - v0);
-		glm::vec3 B(v2 - v0);
-
-		glm::vec3 C = cross(A, B);
-		glm::normalize(C);
-
-		//triangle lies on a plane, find the distance from the origin to the plane
-		float D = - glm::dot(C, v0);
-
-		//find the distance between camera and intersection point
-		float dist = -(glm::dot(C, s) + D) / glm::dot(C, u);
-
-		glm::vec3 p = dist * u + s;
-
-		glm::vec3 edge0(v1 - v0);
-		glm::vec3 edge1(v2 - v1);
-		glm::vec3 edge2(v0 - v2);
-		glm::vec3 C0 = p - v0;
-		glm::vec3 C1 = p - v1;
-		glm::vec3 C2 = p - v2;
-		if( glm::dot(C, glm::cross(edge0,C0)) > 0 &&
-			glm::dot(C, glm::cross(edge1, C1)) > 0 &&
-			glm::dot(C, glm::cross(edge2, C2)) > 0) {
+	for (int i = 0; i < sphere_vertices.size() /3; ++i) {
+		glm::vec3 v0 = sphere_vertices[j];
+		glm::vec3 v1 = sphere_vertices[j + 1];
+		glm::vec3 v2 = sphere_vertices[j + 2];
+		float t = MAXINT, u, v;
+		if (rayTriangleIntersect(orig, dir, v0, v1, v2, t, u, v) && t<tNear) {
+			tNear = t;
+			uv.x = u;
+			uv.y = v;
+			triIndex = i;
 			intersection = true;
 		}
+		j += 3;
+	}
+	return intersection;
+}
+bool checkLight(glm::vec3 point, glm::vec3 light, glm::vec3 normal)
+{
+	glm::vec3 vector = light - point;
+
+	//check if the light is the opposite direction to the triangle face
+	//if (glm::dot(vector, normal) < 0)
+	//{
+		//return false;
+	//}
+
+	vector = glm::normalize(vector);
+	float lowestT = maxDistance;
+
+	int j = 0;
+	for (int i = 0; i < sphere_normal.size(); i++)
+	{
+		//std::cout << "creating the vectors for each of the object" << std::endl;
+		glm::vec3 v1 = sphere_vertices[j];
+		glm::vec3 v2 = sphere_vertices[j+1];
+		glm::vec3 v3 = sphere_vertices[j+2];
+
+		//std::cout << "comparing to polygon " << i << std::endl;
+
+		glm::vec3 A(v2 - v1);
+		glm::vec3 B(v3 - v1);
+
+		glm::vec3 C = cross(A, B);
+		float D = -glm::dot(C, v1);
+
+		//find the distance between camera and intersection point
+		float dist = -(glm::dot(C, point) + D) / glm::dot(C, vector);
+
+		//float t = (glm::dot(midpoints[i], normals[i]) - glm::dot(point, normals[i]) / (glm::dot(vector, normals[i])));
+		glm::vec3 ray = point + (dist * vector);
+
+
+
+		//std::cout << "checking if the point is in the triangle" << std::endl;
+		if (PointInTriangle(ray, v1, v2, v3))
+		{
+			//std::cout << " CONNECTION!!!!!!!       point connects to triangle" << std::endl;
+			//marks the ray as touching the triangle at some point
+			//checks if the contact is the closest contact point
+			if (dist < lowestT && dist > 0.01f)
+			{
+				//std::cout << "lower than max" << std::endl;
+				return false;
+			}
+		}
+		j += 3;
+	}
+	//does not intersect with any other triangles
+	return true;
+}
+float max(float a, float b)
+{
+	return a > b ? a : b;
+}
+glm::vec4 shade(int triIndex) {
+	glm::vec4 Ia(0.5, 0.5, 0.5, 1.0f);
+	glm::vec4 Id(0.7, 0.7, 0.7, 1.0f);
+	glm::vec4 Is(1.0, 1.0, 1.0, 1.0f);
+
+	//ka & kd are vert color
+	glm::vec4 ka, kd;
+	ka = kd = sphere_colors[triIndex];
+	glm::vec4 ks(1.0f, 1.0f, 1.0f, 1.0f);
+
+	float shininess = 32.0f;
+
+	glm::mat4 transf = PerspViewMatrix * PerspModelMatrix;
+
+	glm::vec3 FragPos(transf * sphere_vertices[triIndex]);
+	glm::vec3 FragNorm = glm::mat3(transpose(inverse(transf))) * sphere_normal[triIndex];
+	glm::vec3 LightPos(transf * lightSource);
+
+	glm::vec3 N = glm::normalize(FragNorm); // vertex normal
+	glm::vec3 L = glm::normalize(LightPos - FragPos); // light direction
+	glm::vec3 R = glm::normalize(reflect(-L, N)); // reflected ray
+	glm::vec3 V = glm::normalize(glm::vec3(0.0, 0.0, 1.0)); // view direction
+
+	float dotLN = dot(L, N);
+	glm::vec4 amb = ka * Ia;
+	glm::vec4 dif = kd * Id * dotLN;
+	glm::vec4 spe = ks * Is * pow(max(dot(V, R), 0.0), shininess) * dotLN;
+
+	return amb + dif + spe;
+}
+glm::vec3 RayTrace(glm::vec3 s, glm::vec3 dir, int depth) {
+
+	bool intersection = false;
+	glm::vec3 background_color(0.0f,0.0f,0.0f);
+
+	float p_rg = 1.0f;
+	float p_tg = 1.0f;
+
+	float tNear;
+	int triIndex;
+	glm::vec2 uv;
+	for (float t = 0.0f; t <= 10.0f; t+= 0.1f) {
+		tNear = MAXINT;
+
+		intersection = intersect(s, dir, tNear, triIndex, uv);
 	}
 	//if not intersected
 	if (intersection == false) {
 		return background_color;
 	}
-	return triangle_color;
+	glm::vec3 ray = s + (tNear * dir);
+	glm::vec3 pixColor(sphere_colors[triIndex]);
+	if (depth == maxDepth)
+		return pixColor;
+	
+	if (checkLight(ray, lightSource, sphere_normal[triIndex]))
+	{
+		glm::vec3 I(shade(triIndex)); 
+
+		float reflectivity = 0.33f;
+
+		glm::vec3 u = dir;
+		glm::vec3 n(sphere_vertices[triIndex]);
+		glm::vec3 r = dir - 2 * glm::dot(u,n) * n;
+		I = I + reflectivity * RayTrace(ray, r, depth + 1);
+		return I;
+	}
+	return	pixColor * 0.5f;
+
 }
 
 void RayTraceMain() {
 	glm::vec3 x(eyePos.x, eyePos.y, eyePos.z);  // let x be the postion of the viewer
-	int maxDepth = 3;							// let maxDepth be a positive integer
+	int maxDepth = 0;							// let maxDepth be a positive integer
 
 	float length = 2.0f / 800.0f; //length of the pixel
 	//For each pixel p in the viewport
@@ -297,6 +399,8 @@ void RayTraceMain() {
 			plane_colors.push_back(glm::vec4(color,0.1f));
 		}
 	}
+
+	//
 }
 void CreateShaders( void )
 {
@@ -669,7 +773,7 @@ void update(int value) {
 	sphere_normal.clear();
 	theta += 1;
 	spherex += cos(theta); spherez += sin(theta);
-	CreateSphere(spherex, spherey, spherez, r);
+	CreateSphere1(spherex, spherey, spherez, r);
 	glutPostRedisplay();
 	glutTimerFunc(60, update, 0);
 }
@@ -696,20 +800,25 @@ void init( void )
 	// Create axis buffers
 	CreateAxisBuffers();
 
+	lightSource = glm::vec4(3.0f, 0.0f, 3.0f,1.0f);
 	//
 	// Consider calling a function to create your object here
 	//
 	//CreateSphere(0.0f,0.7f,0.0f,0.7f);
-	CreateSphere(1.0f, 0.5f, 1.0f,0.5f); //(x,y,z,radius)
-	CreateSphere(3.0f, 0.0f, 3.0f, 0.1f);
-	CreateCylinder(-1.0f, 0.0f, 1.0f,0.5f,1.0f);// (x,y,z,radius, height)
-	CreateCone(0.0f, 0.0f, -1.5f, 0.5f, 1.0f);// (x,y,z,radius, height)
-	CreateCuboid(-1.5f, 0.0f, -1.5f, 1.0f, 1.5f, 1.25f);//(x,y,z,width,length,height)
-	CreateCylinder(2.0f, 0.0f, 0.0f, 0.2f, 2.0f);
-	
-	CreateTriangle();
+	//CreateSphere(1.0f, 0.5f, 1.0f,0.5f); //(x,y,z,radius)
+	//CreateSphere(3.0f, 0.0f, 3.0f, 0.1f);
+	//CreateCylinder(-1.0f, 0.0f, 1.0f,0.5f,1.0f);// (x,y,z,radius, height)
+	//CreateCone(0.0f, 0.0f, -1.5f, 0.5f, 1.0f);// (x,y,z,radius, height)
+	//CreateCuboid(-1.5f, 0.0f, -1.5f, 1.0f, 1.5f, 1.25f);//(x,y,z,width,length,height)
+	//CreateCylinder(2.0f, 0.0f, 0.0f, 0.2f, 2.0f);
+
+	CreateSphere1(0.0f, 0.5f, 0.0f, 0.5f);
+	//CreateTriangle();
+
+
 	CreatePlane();
 	//CreateNormLines();
+
 
 
 	CreateFloor();
